@@ -1,0 +1,43 @@
+{
+    "SDF3dData": {
+        "node_params": {
+            "n_volume_points": null,
+            "on_surface_only": true,
+            "scaler": 2
+        },
+        "edge_params": {
+            "edge_method": "mesh_edge",
+            "radius": 0.25,
+            "min_n_edges": 3,
+            "max_n_edges": 25,
+            "n_features_to_consider": 3,
+            "include_reverse_edges": false,
+            "include_self_edges": false,
+            "with_volume_edges": true
+        },
+        "global_params": {
+            "centroid": true,
+            "volume": true,
+            "area": true
+        },
+        "transform_params": {
+            "preprocess": {
+                "mesh_out": null,
+                "with_scaling_to_unit_box": true,
+                "merge_vertex": true,
+                "scaler": 2
+            },
+            "rotate": {}
+        },
+        "dataloader_params": {
+            "data_folder": "objects",
+            "n_jobs": 1,
+            "data_parallel": false,
+            "batch_size": 2,
+            "shuffle": false,
+            "train_idx": null,
+            "eval_frac": 0,
+            "data_filter": null
+        }
+    }
+}

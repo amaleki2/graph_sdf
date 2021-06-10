@@ -1,0 +1,17 @@
+{
+    "train": {
+        "loss_func": "l1",
+        "n_epochs": 5,
+        "print_every": 2,
+        "save_every": 2,
+        "save_folder_name": "save",
+        "device": "cpu",
+        "optimizer": "adam",
+        "lr_0": 0.001,
+        "lr_scheduler_params": {
+            "scheduler_type": "StepLR",
+            "step_size": 1000,
+            "gamma": 0.2
+        }
+    }
+}
