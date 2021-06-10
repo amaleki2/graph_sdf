@@ -5,9 +5,24 @@ import argparse
 
 from src import SDF3dData, train_sdf
 
-parent_folder = os.path.split(os.path.dirname(__file__))[0]
-sys.path.append(parent_folder)
-from graph_networks.src import EncodeProcessDecode
+
+parser = argparse.ArgumentParser(description='SDF Graph')
+parser.add_argument('-e', dest='example_folder', type=str, required=True)
+parser.add_argument('-test', dest='test', type=bool)
+parser.add_argument('--extra-path', dest='extra_path', type=str)
+parser = parser.parse_args()
+
+if parser.extra_path:
+    parent_folder = parser.extra_path
+else:
+    parent_folder = os.path.split(os.path.abspath(__file__))[0]
+
+try:
+    sys.path.append(parent_folder)
+    from graph_networks.src import EncodeProcessDecode
+except ImportError:
+    raise ImportError("could not find graph_network path, "
+                      "use --extra-path argument to pass the path for this library")
 
 
 class ExampleSDFTraining:
@@ -44,11 +59,6 @@ class ExampleSDFTraining:
     def test(self):
         pass
 
-
-parser = argparse.ArgumentParser(description='SDF Graph')
-parser.add_argument('-e', dest='example_folder', type=str, required=True)
-parser.add_argument('-test', dest='test', type=bool)
-parser = parser.parse_args()
 
 example = ExampleSDFTraining(parser.example_folder)
 if parser.test:
