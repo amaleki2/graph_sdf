@@ -1,3 +1,4 @@
+import os
 import json
 import trimesh
 import unittest
@@ -8,8 +9,15 @@ from src import SDF3dData
 
 class SDF3dDataTest(unittest.TestCase):
     @staticmethod
-    def read_cube_mesh():
-        mesh = trimesh.load("objects/test_cube.obj")
+    def get_abs_path():
+        path = os.path.abspath(__file__)
+        parent_dir = os.path.split(path)[0]
+        return parent_dir
+
+    def read_cube_mesh(self):
+        parent_dir = self.get_abs_path()
+        mesh_file = os.path.join(parent_dir, "objects", "test_cube.obj")
+        mesh = trimesh.load(mesh_file)
         mesh.vertices *= 0.5
         return mesh
 
@@ -76,8 +84,14 @@ class SDF3dDataTest(unittest.TestCase):
         self.assertTrue(np.isclose(u, [0, 0, 0, 6, 1]).all())
 
     def test_SDF3dData(self):
-        with open("configs/test_data_configs.json", "rb") as fid:
+        parent_dir = self.get_abs_path()
+        data_configs = os.path.join(parent_dir, "configs", "test_data_configs.json")
+        with open(data_configs, "rb") as fid:
             configs = json.load(fid)
         configs = configs['SDF3dData']
         data_handler = SDF3dData(**configs)
         data_handler.mesh_to_dataloader()
+
+
+if __name__ == '__main__':
+    unittest.main()

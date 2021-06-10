@@ -15,7 +15,7 @@ parser = parser.parse_args()
 if parser.extra_path:
     parent_folder = parser.extra_path
 else:
-    parent_folder = os.path.split(os.path.abspath(__file__))[0]
+    parent_folder = os.path.split(os.path.split(os.path.abspath(__file__))[0])[0]
 
 try:
     sys.path.append(parent_folder)

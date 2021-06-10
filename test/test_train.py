@@ -11,17 +11,25 @@ from graph_networks.src import EncodeProcessDecode
 
 class SDFTrainTest(unittest.TestCase):
     @staticmethod
-    def get_dataloaders():
-        with open("configs/test_data_configs.json", "rb") as fid:
+    def get_abs_path():
+        path = os.path.abspath(__file__)
+        parent_dir = os.path.split(path)[0]
+        return parent_dir
+
+    def get_dataloaders(self):
+        parent_dir = self.get_abs_path()
+        data_configs = os.path.join(parent_dir, "configs", "test_data_configs.json")
+        with open(data_configs, "rb") as fid:
             configs = json.load(fid)
         configs = configs['SDF3dData']
         data_handler = SDF3dData(**configs)
         train_dl, test_dl = data_handler.mesh_to_dataloader()
         return train_dl, test_dl
 
-    @staticmethod
-    def get_network():
-        with open("configs/test_network_configs.json", "rb") as fid:
+    def get_network(self):
+        parent_dir = self.get_abs_path()
+        network_configs = os.path.join(parent_dir, "configs", "test_network_configs.json")
+        with open(network_configs, "rb") as fid:
             config = json.load(fid)
         model_params = config['encode_process_decode']
         model = EncodeProcessDecode(**model_params)
@@ -37,7 +45,9 @@ class SDFTrainTest(unittest.TestCase):
         func(data)
 
     def test_train(self):
-        with open("configs/test_training_configs.json", "rb") as fid:
+        parent_dir = self.get_abs_path()
+        training_configs = os.path.join(parent_dir, "configs", "test_training_configs.json")
+        with open(training_configs, "rb") as fid:
             configs = json.load(fid)
         training_params = configs['train']
         model = self.get_network()
@@ -46,3 +56,7 @@ class SDFTrainTest(unittest.TestCase):
         save_dir = os.path.join(os.getcwd(), training_params['save_folder_name'])
         self.assertTrue(os.path.isdir(save_dir))
         shutil.rmtree(save_dir)
+
+
+if __name__ == '__main__':
+    unittest.main()
