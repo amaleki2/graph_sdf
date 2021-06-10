@@ -77,7 +77,7 @@ class SDF3dData:
                                                max_n_edges=max_n_edges,
                                                n_features_to_consider=n_features_to_consider,
                                                with_volume_edges=with_volume_edges)
-            edge_idx = np.concatenate((edges1, edges2), axis=0)
+            edge_idx = np.concatenate((edges1, edges2), axis=1)
         else:
             raise (NotImplementedError("method %s is not recognized" % edge_method))
         # edges = edges.T

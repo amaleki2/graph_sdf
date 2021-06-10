@@ -3,12 +3,12 @@ import sys
 import json
 import argparse
 
-from src import SDF3dData, train_sdf
+from src import SDF3dData, train_sdf, test_and_visualize
 
 
 parser = argparse.ArgumentParser(description='SDF Graph')
 parser.add_argument('-e', dest='example_folder', type=str, required=True)
-parser.add_argument('-test', dest='test', type=bool)
+parser.add_argument('-test', dest='test', type=bool, default=False, const=True, nargs='?')
 parser.add_argument('--extra-path', dest='extra_path', type=str)
 parser = parser.parse_args()
 
@@ -57,7 +57,11 @@ class ExampleSDFTraining:
         train_sdf(model, train_dataloader, test_dataloader, **train_params)
 
     def test(self):
-        pass
+        model = self.get_network()
+        data_dl, _ = self.get_dataloader()
+
+        test_and_visualize(model,
+                           data_dl)
 
 
 example = ExampleSDFTraining(parser.example_folder)

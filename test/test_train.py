@@ -4,10 +4,6 @@ import unittest
 from src import SDF3dData, train_sdf
 from src.train_utils import *
 
-parent_folder = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
-sys.path.append(parent_folder)
-from graph_networks.src import EncodeProcessDecode
-
 
 class SDFTrainTest(unittest.TestCase):
     @staticmethod
@@ -27,6 +23,11 @@ class SDFTrainTest(unittest.TestCase):
         return train_dl, test_dl
 
     def get_network(self):
+        abs_path = os.path.abspath(__file__)
+        parent_folder = os.path.split(os.path.split(os.path.split(abs_path)[0])[0])[0]
+        sys.path.append(parent_folder)
+        from graph_networks.src import EncodeProcessDecode
+
         parent_dir = self.get_abs_path()
         network_configs = os.path.join(parent_dir, "configs", "test_network_configs.json")
         with open(network_configs, "rb") as fid:
