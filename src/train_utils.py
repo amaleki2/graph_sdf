@@ -2,8 +2,6 @@ import os
 import sys
 import torch
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.interpolate import griddata
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -20,10 +18,10 @@ def find_best_gpu():
 
 def get_device(device):
     if device == 'cpu':
-        print('training using cpu')
+        print('using cpu')
         device = torch.device('cpu')
     elif device == 'cuda':
-        print('training using gpu: ', end="")
+        print('using gpu: ', end="")
         device = torch.device('cuda')
         gpu_id = find_best_gpu()
         if gpu_id:
@@ -102,13 +100,6 @@ def save_latest(model, epoch, optimizer, save_dir, data_parallel):
     torch.save({"epoch": epoch, "optimizer_state_dict": optimizer.state_dict()}, optim_latest_path)
 
 
-def load_latest(model, save_dir, device):
-    model_latest_path = os.path.join(os.getcwd(), save_dir, "model_latest.pth")
-    model_weights = torch.load(model_latest_path, map_location=device)["model_state_dict"]
-    model.load_state_dict(model_weights)
-    return model
-
-
 def print_to_screen(epoch, optimizer, train_loss, test_loss=None):
     lr = optimizer.param_groups[0]['lr']
     print("epoch %4s: learning rate=%0.2e" % (str(epoch), lr), end="")
@@ -119,45 +110,3 @@ def print_to_screen(epoch, optimizer, train_loss, test_loss=None):
         print('%.4f' % test_loss)
     else:
         print("")
-
-
-def plot_scatter_contour_3d(points, true_vals, pred_vals, levels=None):
-    ends, n_pts = 0.9, 100
-    n_pnts_c = n_pts * 1j
-    x = np.linspace(-ends, ends, n_pts, endpoint=True)
-    X, Y, Z = np.mgrid[-ends:ends:n_pnts_c, -ends:ends:n_pnts_c, -ends:ends:n_pnts_c]
-    SDFS_true = griddata(points, true_vals, (X, Y, Z))
-    SDFS_pred = griddata(points, pred_vals, (X, Y, Z))
-    fig, axes = plt.subplots(figsize=(20, 20), nrows=3, ncols=3)
-    for i in range(3):
-        ax1, ax2, ax3 = axes[i]
-        z_slice = 40 * i + 10
-        cntr1 = ax1.contour(x, x, SDFS_true[:, :, z_slice], levels=levels, linewidths=1, colors='k')
-        plt.clabel(cntr1, fmt='%0.2f', colors='k', fontsize=10)
-        cntr1 = ax1.contourf(x, x, SDFS_true[:, :, z_slice], cmap="RdBu_r", levels=20)
-        fig.colorbar(cntr1, ax=ax1)
-        ax1.set(xlim=(-1, 1), ylim=(-1, 1))
-        ax1.set_xticks([])
-        ax1.set_yticks([])
-
-        cntr2 = ax2.contour(x, x, SDFS_pred[:, :, z_slice], levels=levels, linewidths=1, colors='k')
-        plt.clabel(cntr2, fmt='%0.2f', colors='k', fontsize=10)
-        cntr2 = ax2.contourf(x, x, SDFS_pred[:, :, z_slice], cmap="RdBu_r", levels=20)
-        fig.colorbar(cntr2, ax=ax2)
-        ax2.set(xlim=(-1, 1), ylim=(-1, 1))
-        ax2.set_xticks([])
-        ax2.set_yticks([])
-        #     if levels:
-        #         new_levels = [(l + r) / 2 for (l, r) in zip(levels[1:], levels[:-1])] + levels
-        #         new_levels = sorted(new_levels)
-        #     else:
-        #         new_levels = None
-        new_levels = levels
-        cntr3 = ax3.contour(x, x, SDFS_true[:, :, z_slice], levels=new_levels, linewidths=2, colors='k')
-        plt.clabel(cntr3, fmt='%0.2f', colors='k', fontsize=10)
-        cntr3 = ax3.contour(x, x, SDFS_pred[:, :, z_slice], levels=new_levels, linewidths=1, colors='r', linestyles='--')
-        ax3.set(xlim=(-1, 1), ylim=(-1, 1))
-        ax3.set_xticks([])
-        ax3.set_yticks([])
-    plt.subplots_adjust(wspace=0.5)
-    plt.show()

@@ -60,8 +60,7 @@ class ExampleSDFTraining:
         model = self.get_network()
         data_dl, _ = self.get_dataloader()
 
-        test_and_visualize(model,
-                           data_dl)
+        test_and_visualize(model, data_dl, save_files=True)
 
 
 example = ExampleSDFTraining(parser.example_folder)

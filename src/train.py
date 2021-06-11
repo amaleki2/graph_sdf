@@ -69,25 +69,7 @@ def train_sdf(model,
         scheduler.step()
 
 
-def test_and_visualize(model,
-                       data_dl,
-                       device='cpu',
-                       save_folder_name="save"):
-    device, _ = get_device(device)
-    model = model.to(device=device)
-    model = load_latest(model, save_folder_name, device)
 
-    predictions = []
-    with torch.no_grad():
-        for data in data_dl:
-            model.eval()
-            data = data.to(device)
-            points = data.x[:, :3].cpu().numpy()
-            pred_val = model(data).x.cpu().numpy().reshape(-1)
-            true_val = data.y.cpu().numpy().reshape(-1)
-            plot_scatter_contour_3d(points, true_val, pred_val)
-            predictions.append([points, true_val, pred_val])
-    plt.show()
 
 
 
