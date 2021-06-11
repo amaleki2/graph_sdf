@@ -4,7 +4,7 @@ from .test_utils import *
 
 def test_and_visualize(model,
                        data_dl,
-                       device='cpu',
+                       device='cuda',
                        save_folder_name="save",
                        save_files=False,
                        max_test_num=10):
@@ -29,4 +29,4 @@ def test_and_visualize(model,
                 save_name = None
             plot_scatter_contour_3d(points, true_val, pred_val, save_name=save_name)
             predictions.append([points, true_val, pred_val])
-            if i > max_test_num: break
+            if i >= max_test_num: break

@@ -44,8 +44,11 @@ class ExampleSDFTraining:
         model = EncodeProcessDecode(**model_params)
         return model
 
-    def get_dataloader(self):
-        data_params = self.data_configs['SDF3dData']
+    def get_dataloader(self, test=False):
+        if test:
+            data_params = self.data_configs['test_data']
+        else:
+            data_params = self.data_configs['train_data']
         data_handler = SDF3dData(**data_params)
         train_dl, test_dl = data_handler.mesh_to_dataloader()
         return train_dl, test_dl
@@ -58,8 +61,7 @@ class ExampleSDFTraining:
 
     def test(self):
         model = self.get_network()
-        data_dl, _ = self.get_dataloader()
-
+        data_dl, _ = self.get_dataloader(test=True)
         test_and_visualize(model, data_dl, save_files=True)
 
 
