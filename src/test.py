@@ -6,8 +6,7 @@ def test_and_visualize(model,
                        data_dl,
                        device='cuda',
                        save_folder_name="save",
-                       save_files=False,
-                       max_test_num=10):
+                       save_files=False):
 
     plot_losses_from_event_file(save_folder_name, save_files=save_files)
 
@@ -29,4 +28,3 @@ def test_and_visualize(model,
                 save_name = None
             plot_scatter_contour_3d(points, true_val, pred_val, save_name=save_name)
             predictions.append([points, true_val, pred_val])
-            if i >= max_test_num: break

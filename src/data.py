@@ -107,11 +107,13 @@ class SDF3dData:
         return global_attr
 
     def _mesh_to_dataloader(self,
+                            n_objects=None,
+                            randomize_objects=False,
                             data_folder=None,
-                            n_jobs=1,
+                            n_workers=1,
                             data_parallel=False,
                             batch_size=2,
-                            shuffle=False,
+                            shuffle_dataloader=False,
                             train_idx=None,
                             eval_frac=0.1,
                             data_filter=None):
@@ -123,7 +125,15 @@ class SDF3dData:
         files = [os.path.join(data_folder, f) for f in files if data_filter(f)]
         files = np.array(files)  # fir the ease of slicing
 
-        n_objects = len(files)
+        if n_objects is None:
+            n_objects = len(files)
+        else:
+            if randomize_objects:
+                idxs = np.random.randint(0, len(files), n_objects)
+            else:
+                idxs = np.arange(n_objects)
+            files = files[idxs]
+
         if train_idx is None:
             random_idx = np.random.permutation(range(n_objects))
             train_idx = random_idx[:int((1 - eval_frac) * n_objects)]
@@ -134,21 +144,21 @@ class SDF3dData:
         train_files = files[train_idx]
         test_files = files[test_idx]
 
-        if n_jobs == 1:
+        if n_workers == 1:
             train_graph_data_list = [self.mesh_to_graph(f) for f in tqdm.tqdm(train_files)]
             test_graph_data_list = [self.mesh_to_graph(f) for f in tqdm.tqdm(test_files)]
         else:
-            train_graph_data_list = Parallel(n_jobs=n_jobs)(delayed(self.mesh_to_graph)(f)
-                                                            for f in tqdm.tqdm(train_files))
-            test_graph_data_list = Parallel(n_jobs=n_jobs)(delayed(self.mesh_to_graph)(f)
-                                                           for f in tqdm.tqdm(test_files))
+            train_graph_data_list = Parallel(n_jobs=n_workers)(delayed(self.mesh_to_graph)(f)
+                                                               for f in tqdm.tqdm(train_files))
+            test_graph_data_list = Parallel(n_jobs=n_workers)(delayed(self.mesh_to_graph)(f)
+                                                              for f in tqdm.tqdm(test_files))
 
         if data_parallel:
-            train_data = DataListLoader(train_graph_data_list, batch_size=batch_size, shuffle=shuffle)
-            test_data = DataListLoader(test_graph_data_list, batch_size=batch_size, shuffle=shuffle)
+            train_data = DataListLoader(train_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
+            test_data = DataListLoader(test_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
         else:
-            train_data = DataLoader(train_graph_data_list, batch_size=batch_size, shuffle=shuffle)
-            test_data = DataLoader(test_graph_data_list, batch_size=batch_size, shuffle=shuffle)
+            train_data = DataLoader(train_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
+            test_data = DataLoader(test_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
         return train_data, test_data
 
     def mesh_to_graph(self, mesh_file):

@@ -82,6 +82,7 @@ def plot_scatter_contour_3d(points, true_vals, pred_vals, levels=None, save_name
         ax1.set(xlim=(-1, 1), ylim=(-1, 1))
         ax1.set_xticks([])
         ax1.set_yticks([])
+        ax1.title.set_text('Ground Truth at z=%0.2f' %x[z_slice])
 
         cntr2 = ax2.contour(x, x, SDFS_pred[:, :, z_slice], levels=levels, linewidths=1, colors='k')
         plt.clabel(cntr2, fmt='%0.2f', colors='k', fontsize=10)
@@ -90,6 +91,7 @@ def plot_scatter_contour_3d(points, true_vals, pred_vals, levels=None, save_name
         ax2.set(xlim=(-1, 1), ylim=(-1, 1))
         ax2.set_xticks([])
         ax2.set_yticks([])
+        ax2.title.set_text('Prediction at z=%0.2f' %x[z_slice])
         #     if levels:
         #         new_levels = [(l + r) / 2 for (l, r) in zip(levels[1:], levels[:-1])] + levels
         #         new_levels = sorted(new_levels)
@@ -98,11 +100,13 @@ def plot_scatter_contour_3d(points, true_vals, pred_vals, levels=None, save_name
         new_levels = levels
         cntr3 = ax3.contour(x, x, SDFS_true[:, :, z_slice], levels=new_levels, linewidths=2, colors='k')
         plt.clabel(cntr3, fmt='%0.2f', colors='k', fontsize=10)
-        cntr3 = ax3.contour(x, x, SDFS_pred[:, :, z_slice], levels=new_levels, linewidths=1, colors='r', linestyles='--')
+        cntr3 = ax3.contour(x, x, SDFS_pred[:, :, z_slice], levels=new_levels, linewidths=1, colors='r')
         ax3.set(xlim=(-1, 1), ylim=(-1, 1))
         ax3.set_xticks([])
         ax3.set_yticks([])
+        ax3.title.set_text('Comparison at z=%0.2f' %x[z_slice])
     plt.subplots_adjust(wspace=0.25)
+    fig.suptitle('Results with %d volume points' % (true_vals != 0).sum())
 
     if save_name is None:
         plt.show()
