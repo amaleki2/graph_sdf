@@ -86,8 +86,9 @@ def get_sdf(mesh, points):
 
 
 def ball_query(x1, x2, radius=0.1, min_n_edges=3, max_n_edges=50):
+    k = min(len(x2), max_n_edges)
     tree = KDTree(x2)
-    dist, idx = tree.query(x1, k=max_n_edges)
+    dist, idx = tree.query(x1, k=k)
     s1, s2 = idx.shape
     idx = np.stack((np.tile(np.arange(s1), (s2, 1)).T, idx), axis=2).reshape(-1, 2)  # get list of pairs
     indicator = dist < radius
