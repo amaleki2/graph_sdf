@@ -37,30 +37,36 @@ def get_device(device):
     return device, data_parallel
 
 
-def graph_loss(data, loss_func=torch.nn.L1Loss()):
-    loss = loss_func(data.x, data.y)
+def graph_loss(data, loss_func=torch.nn.L1Loss(), data_parallel=False, mask=None):
+    if not data_parallel:
+        if mask is None:
+            loss = loss_func(data.x, data.y)
+        else:
+            loss = loss_func(data.x[mask], data.y[mask])
+    else:
+        raise NotImplemented
     return loss
 
 
-def graph_loss_data_parallel(data, loss_func=torch.nn.L1Loss()):
-    device = data.device
-    data_y = torch.cat([d.y for d in data]).to(device)
-    loss = loss_func(data.x, data_y)
+def graph_loss_banded(data, loss_func=torch.nn.L1Loss(), data_parallel=False, intervals=(0.01, 0.1), weights=(100, 10)):
+    loss = graph_loss(data, loss_func=loss_func, data_parallel=data_parallel)
+    for interval, weight in zip(intervals, weights):
+        mask = abs(data.y) < interval
+        added_loss = graph_loss(data, loss_func=loss_func, data_parallel=data_parallel, mask=mask)
+        loss = weight * added_loss
     return loss
 
 
 def get_loss_func(loss_func, data_parallel):
     if loss_func == 'l1':
-        func = torch.nn.L1Loss()
+        func = lambda x: graph_loss(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
     elif loss_func == 'l2':
-        func = torch.nn.L1Loss()
+        func = lambda x: graph_loss(x, loss_func=torch.nn.MSELoss(), data_parallel=data_parallel)
+    elif loss_func == 'banded_l1':
+        func = lambda x: graph_loss_banded(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
     else:
         raise ValueError
-
-    if data_parallel:
-        return lambda x: graph_loss_data_parallel(x, loss_func=func)
-    else:
-        return lambda x: graph_loss(x, loss_func=func)
+    return func
 
 
 def get_optimizer(model, optimizer, lr_0):

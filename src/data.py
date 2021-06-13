@@ -114,7 +114,6 @@ class SDF3dData:
                             data_parallel=False,
                             batch_size=2,
                             shuffle_dataloader=False,
-                            train_idx=None,
                             eval_frac=0.1,
                             data_filter=None):
 
@@ -134,13 +133,9 @@ class SDF3dData:
                 idxs = np.arange(n_objects)
             files = files[idxs]
 
-        if train_idx is None:
-            random_idx = np.random.permutation(range(n_objects))
-            train_idx = random_idx[:int((1 - eval_frac) * n_objects)]
-            test_idx = random_idx[int((1 - eval_frac) * n_objects):]
-        else:
-            test_idx = list(set(range(n_objects)) - set(train_idx))
-
+        n_train = round((1 - eval_frac) * n_objects)
+        train_idx = np.arange(n_train)
+        test_idx = np.arange(n_train, n_objects)
         train_files = files[train_idx]
         test_files = files[test_idx]
 
