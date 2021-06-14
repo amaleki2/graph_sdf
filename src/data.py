@@ -28,12 +28,18 @@ class SDF3dData:
         self.dataloader_params = dataloader_params
 
     @staticmethod
-    def _get_node_attr(mesh, n_volume_points=None, on_surface_only=True, scaler=2):
-        if n_volume_points is None:
-            n_volume_points = np.random.randint(1000, 10000)
+    def _get_node_attr(mesh, n_volume_points=None, on_surface_only=True, scaler=2, grid_resolution=None):
+        assert n_volume_points is None or grid_resolution is None, \
+            "can specify grid_resolution and n_volume_points"
+
+        if grid_resolution is None:
+            if n_volume_points is None:
+                n_volume_points = np.random.randint(1000, 10000)
+            volume_points = get_volume_points_randomly(n_volume_points, scaler=scaler)
+        else:
+            volume_points = get_rasterized_points(grid_resolution, scaler=scaler)
 
         surface_points = mesh.vertices
-        volume_points = get_volume_points_randomly(n_volume_points, scaler=scaler)
         volume_sdfs = get_sdf(mesh, volume_points)
         all_points = np.concatenate((surface_points, volume_points))
         all_sdfs = np.concatenate((np.zeros(len(surface_points)), volume_sdfs))

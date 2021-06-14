@@ -75,6 +75,19 @@ def get_volume_points_randomly(n_points, scaler=2):
     return points
 
 
+def get_rasterized_points(voxel_resolution, scaler=2):
+    half_width = scaler / 2
+    points = np.meshgrid(
+        np.linspace(-half_width, half_width, voxel_resolution),
+        np.linspace(-half_width, half_width, voxel_resolution),
+        np.linspace(-half_width, half_width, voxel_resolution)
+    )
+    points = np.stack(points)
+    points = np.swapaxes(points, 1, 2)
+    points = points.reshape(3, -1).transpose().astype(np.float32)
+    return points
+
+
 def get_sdf(mesh, points):
     return - ProximityQuery(mesh).signed_distance(points)
 

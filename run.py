@@ -62,7 +62,12 @@ class ExampleSDFTraining:
     def test(self):
         model = self.get_network()
         data_dl, _ = self.get_dataloader(test=True)
-        test_and_visualize(model, data_dl, save_files=True)
+        try:
+            with_3d_surface = self.data_configs['test_data']['node_params']['grid_resolution']
+        except KeyError:
+            with_3d_surface = False
+
+        test_and_visualize(model, data_dl, device='cpu', save_files=True, with_3d_surface=with_3d_surface)
 
 
 example = ExampleSDFTraining(parser.example_folder)

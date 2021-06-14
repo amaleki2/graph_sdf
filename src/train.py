@@ -67,12 +67,3 @@ def train_sdf(model,
             save_latest(model, epoch, optimizer, save_folder_name, data_parallel)
 
         scheduler.step()
-
-
-
-
-
-
-
-
-

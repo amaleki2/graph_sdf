@@ -1,8 +1,10 @@
 import os
 import torch
+import trimesh
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
+from skimage.measure import marching_cubes
 from tensorflow.python.summary.summary_iterator import summary_iterator
 
 
@@ -112,3 +114,28 @@ def plot_scatter_contour_3d(points, true_vals, pred_vals, levels=None, save_name
         plt.show()
     else:
         plt.savefig(save_name)
+
+
+def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):
+    verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
+    mesh = trimesh.Trimesh(verts, faces)
+    if save_name is None:
+        mesh.show()
+    else:
+        with open(save_name, 'wb') as fid:
+            mesh.export(fid, file_type='obj')
+
+
+def plot_surface_mesh(true_sdfs, pred_sdfs, save_names=None, level=1):
+    volume_points_mask = true_sdfs != 0
+    n_volume_points = volume_points_mask.sum()
+    grid_size = round(n_volume_points ** (1/3))
+    assert grid_size ** 3 == n_volume_points
+
+    grid_true_sdfs = true_sdfs[volume_points_mask].reshape(grid_size, grid_size, grid_size)
+    sdf_grid_to_surface_mesh(grid_true_sdfs, save_name=save_names[0], level=level)
+
+    grid_pred_sdfs = pred_sdfs[volume_points_mask].reshape(grid_size, grid_size, grid_size)
+    sdf_grid_to_surface_mesh(grid_pred_sdfs, save_name=save_names[1], level=level)
+
+
