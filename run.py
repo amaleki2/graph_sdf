@@ -67,7 +67,7 @@ class ExampleSDFTraining:
         except KeyError:
             with_3d_surface = False
 
-        test_and_visualize(model, data_dl, device='cpu', save_files=True, with_3d_surface=with_3d_surface)
+        test_and_visualize(model, data_dl, device='cuda', save_files=True, with_3d_surface=with_3d_surface)
 
 
 example = ExampleSDFTraining(parser.example_folder)

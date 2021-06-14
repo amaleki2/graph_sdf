@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from .train_utils import get_device
 from .test_utils import *
 
@@ -17,7 +18,7 @@ def test_and_visualize(model,
 
     predictions = []
     with torch.no_grad():
-        for i, data in enumerate(data_dl):
+        for i, data in enumerate(tqdm(data_dl)):
             model.eval()
             data = data.to(device)
             points = data.x[:, :3].cpu().numpy()
@@ -32,10 +33,12 @@ def test_and_visualize(model,
                 save_name_fig = None
                 save_name_msh = None
 
-            plot_scatter_contour_3d(points, true_val, pred_val, save_name=save_name_fig,
-                                    levels=np.linspace(-0.45, 0.45, 7))
             if with_3d_surface:
                 plot_surface_mesh(true_val, pred_val, save_names=save_name_msh, level=0)
+            else:
+                plot_scatter_contour_3d(points, true_val, pred_val, save_name=save_name_fig,
+                                        levels=np.linspace(-0.45, 0.45, 7))
+
             predictions.append([points, true_val, pred_val])
 
     return predictions
