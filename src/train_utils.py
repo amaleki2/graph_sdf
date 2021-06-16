@@ -70,7 +70,9 @@ def get_loss_func(loss_func, data_parallel):
 
 
 def eikonal_loss_func(data, pred):
-    pred.x.backward(torch.ones(pred.x.shape), retain_graph=True)
+    device = data.x.device
+    grad_initialized = torch.ones(pred.x.shape, device=device)
+    pred.x.backward(grad_initialized, retain_graph=True)
     sdf_grad = torch.norm(data.x.grad[:, :3], dim=1)
     loss = torch.mean(abs(sdf_grad - 1))
     return loss
