@@ -69,6 +69,13 @@ def get_loss_func(loss_func, data_parallel):
     return func
 
 
+def eikonal_loss_func(data, pred):
+    pred.x.backward(torch.ones(pred.x.shape), retain_graph=True)
+    sdf_grad = torch.norm(data.x.grad[:, :3], dim=1)
+    loss = torch.mean(abs(sdf_grad - 1))
+    return loss
+
+
 def get_optimizer(model, optimizer, lr_0):
     if optimizer.lower() == 'adam':
         optim = torch.optim.Adam(model.parameters(), lr=lr_0)
