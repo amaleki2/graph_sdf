@@ -152,3 +152,20 @@ def get_mesh_edges(mesh):
     return mesh.edges.T
 
 
+def get_mesh_faces(mesh):
+    return mesh.faces.T
+
+
+def compute_face_features(mesh, x, face_idx, magnitudes=True, normals=True, angles=True):
+    face_nodes = x[face_idx]
+    face_attrs = []
+    if magnitudes:
+        face_attrs.append(abs(face_nodes[0] - face_nodes[1]))
+        face_attrs.append(abs(face_nodes[0] - face_nodes[2]))
+        face_attrs.append(abs(face_nodes[1] - face_nodes[2]))
+    if normals:
+        face_attrs.append(mesh.face_normals)
+    if angles:
+        face_attrs.append(mesh.face_angles)
+    face_attrs = np.concatenate(face_attrs, axis=1)
+    return face_attrs

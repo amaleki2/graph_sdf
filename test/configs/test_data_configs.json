@@ -15,6 +15,13 @@
             "include_self_edges": false,
             "with_volume_edges": true
         },
+        "face_params": {
+            "face_method": "mesh_face",
+            "include_all_face_permutation": false,
+            "magnitudes": true,
+            "normals": true,
+            "angles": true
+        },
         "global_params": {
             "centroid": true,
             "volume": true,
@@ -31,11 +38,10 @@
         },
         "dataloader_params": {
             "data_folder": "test/objects",
-            "n_jobs": 1,
+            "n_workers": 1,
             "data_parallel": false,
             "batch_size": 2,
-            "shuffle": false,
-            "train_idx": null,
+            "shuffle_dataloader": false,
             "eval_frac": 0,
             "data_filter": null
         }

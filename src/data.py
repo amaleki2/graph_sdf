@@ -11,6 +11,7 @@ class SDF3dData:
     def __init__(self,
                  node_params=None,
                  edge_params=None,
+                 face_params=None,
                  global_params=None,
                  transform_params=None,
                  dataloader_params=None,
@@ -23,6 +24,7 @@ class SDF3dData:
 
         self.node_params       = node_params
         self.edge_params       = edge_params
+        self.face_params       = face_params
         self.global_params     = global_params
         self.transform_params  = transform_params
         self.dataloader_params = dataloader_params
@@ -101,6 +103,28 @@ class SDF3dData:
         return edge_attr, edge_idx
 
     @staticmethod
+    def _get_face_attr(mesh,
+                       node_attr,
+                       face_method='mesh_face',
+                       include_all_face_permutation=False,
+                       magnitudes=True,
+                       normals=True,
+                       angles=True):
+        if face_method == 'mesh_face':
+            face_idx = get_mesh_faces(mesh)
+        else:
+            raise (NotImplementedError("method %s is not recognized" % face_method))
+
+        if include_all_face_permutation:
+            raise NotImplementedError
+
+        face_idx = np.unique(face_idx, axis=1)  # remove repeated faces
+
+        face_attr = compute_face_features(mesh, node_attr, face_idx,
+                                          magnitudes=magnitudes, normals=normals, angles=angles)
+        return face_attr, face_idx
+
+    @staticmethod
     def _get_global_attr(mesh, centroid=True, volume=True, area=True):
         global_attr = []
         if centroid:
@@ -175,18 +199,20 @@ class SDF3dData:
         node_attr, node_sdf = self._get_node_attr(mesh, **self.node_params)
         edge_attr, edge_idx = self._get_edge_attr(mesh, node_attr, **self.edge_params)
 
-        if self.global_params is None:
-            pyg_data = Data(x=torch.from_numpy(node_attr).type(torch.float32),
-                            y=torch.from_numpy(node_sdf).type(torch.float32),
-                            e=torch.from_numpy(edge_attr).type(torch.float32),
-                            edge_index=torch.from_numpy(edge_idx).type(torch.long))
-        else:
+        pyg_data = Data(x=torch.from_numpy(node_attr).type(torch.float32),
+                        y=torch.from_numpy(node_sdf).type(torch.float32),
+                        e=torch.from_numpy(edge_attr).type(torch.float32),
+                        edge_index=torch.from_numpy(edge_idx).type(torch.long))
+
+        if self.global_params is not None:
             global_attr = self._get_global_attr(mesh, **self.global_params)
-            pyg_data = Data(x=torch.from_numpy(node_attr).type(torch.float32),
-                            y=torch.from_numpy(node_sdf).type(torch.float32),
-                            e=torch.from_numpy(edge_attr).type(torch.float32),
-                            u=torch.from_numpy(global_attr).type(torch.float32),
-                            edge_index=torch.from_numpy(edge_idx).type(torch.long))
+            pyg_data.u = torch.from_numpy(global_attr).type(torch.float32)
+
+        if self.face_params is not None:
+            face_attr, face_index = self._get_face_attr(mesh, node_attr, **self.face_params)
+            pyg_data.f = torch.from_numpy(face_attr).type(torch.float32)
+            pyg_data.face_index = torch.from_numpy(face_index).type(torch.long)
+
         return pyg_data
 
     def mesh_to_dataloader(self):

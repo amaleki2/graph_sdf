@@ -50,6 +50,13 @@
                 "normalize": true,
                 "independent": false
             },
+            "face_model_params": {
+                "n_feat_out": 18,
+                "latent_sizes": 9,
+                "activate_final": true,
+                "normalize": true,
+                "independent": false
+            },
             "global_model_params": {
                 "n_feat_out": 16,
                 "latent_sizes": [16, 32, 16],
@@ -67,6 +74,13 @@
                 "activate_final": true,
                 "with_globals": false,
                 "with_senders": false,
+                "normalize": true,
+                "independent": false
+            },
+            "face_model_params": {
+                "n_feat_out": 18,
+                "latent_sizes": 9,
+                "activate_final": true,
                 "normalize": true,
                 "independent": false
             }
