@@ -6,6 +6,7 @@ def train_sdf(model,
               train_dl,
               test_dl,
               eikonal_coef=1,
+              eikonal_starting_epoch=0,
               loss_func='l1',
               n_epochs=500,
               print_every=25,
@@ -39,12 +40,14 @@ def train_sdf(model,
             if not data_parallel:
                 data = data.to(device)
 
-            data.x.requires_grad = True
-            data.x.retain_grad()
+            if epoch >= eikonal_starting_epoch:
+                data.x.requires_grad = True
+                data.x.retain_grad()
 
             pred = model(data)
             loss = loss_func(pred)
-            loss += eikonal_loss_func(data, pred) * eikonal_coef
+            if epoch >= eikonal_starting_epoch:
+                loss += eikonal_loss_func(data, pred) * eikonal_coef
             epoch_loss.append(loss.item())
             loss.backward()
             optimizer.step()
