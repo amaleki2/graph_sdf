@@ -57,16 +57,22 @@ def graph_loss_banded(data, loss_func=torch.nn.L1Loss(), data_parallel=False, in
     return loss
 
 
-def get_loss_func(loss_func, data_parallel):
-    if loss_func == 'l1':
-        func = lambda x: graph_loss(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
-    elif loss_func == 'l2':
-        func = lambda x: graph_loss(x, loss_func=torch.nn.MSELoss(), data_parallel=data_parallel)
-    elif loss_func == 'banded_l1':
-        func = lambda x: graph_loss_banded(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
-    else:
-        raise ValueError
-    return func
+def get_loss_funcs(loss_funcs, data_parallel):
+    funcs = []
+    if not isinstance(loss_funcs, list):
+        loss_funcs = [loss_funcs]
+
+    for loss_func in loss_funcs:
+        if loss_func == 'l1':
+            func = lambda x: graph_loss(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
+        elif loss_func == 'l2':
+            func = lambda x: graph_loss(x, loss_func=torch.nn.MSELoss(), data_parallel=data_parallel)
+        elif loss_func == 'banded_l1':
+            func = lambda x: graph_loss_banded(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
+        else:
+            raise ValueError
+        funcs.append(func)
+    return funcs
 
 
 def get_optimizer(model, optimizer, lr_0):
@@ -109,10 +115,9 @@ def save_latest(model, epoch, optimizer, save_dir, data_parallel):
 def print_to_screen(epoch, optimizer, train_loss, test_loss=None):
     lr = optimizer.param_groups[0]['lr']
     print("epoch %4s: learning rate=%0.2e" % (str(epoch), lr), end="")
-    print(", train loss: ", end="")
-    print('%.4f' % train_loss, end="")
+    for i, l in enumerate(train_loss):
+        print(", train loss %d: %0.4f" % (i, l.item()), end="")
     if test_loss:
-        print(", test loss: ", end="")
-        print('%.4f' % test_loss)
-    else:
-        print("")
+        for i, l in enumerate(test_loss):
+            print(", test loss %d: %0.4f", (i, l.item()), end="")
+    print("")
