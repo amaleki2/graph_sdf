@@ -39,7 +39,7 @@ class SDFTrainTest(unittest.TestCase):
     def test_graph_loss(self):
         loss_func = 'l1'
         data_parallel = False
-        func = get_loss_func(loss_func, data_parallel)
+        func = get_loss_funcs(loss_func, data_parallel)[0]
         train_dl, _ = self.get_dataloaders()
         data = next(iter(train_dl))
         data.x = data.x[:, :1]

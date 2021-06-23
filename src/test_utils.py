@@ -1,4 +1,5 @@
 import os
+import glob
 import torch
 import trimesh
 import numpy as np
@@ -18,6 +19,7 @@ def load_latest(model, save_dir, device):
 def parse_event_file(event_file):
     train = []
     test = []
+    tag = os.path.split(os.path.split(event_file)[0])[1]
     wall_time_begin = np.inf
     wall_time_end = -np.inf
     for summary in summary_iterator(event_file):
@@ -28,55 +30,78 @@ def parse_event_file(event_file):
         if len(summary.summary.value) > 0:
             value = summary.summary.value[0]
             if hasattr(value, 'tag'):
-                if value.tag == "Loss/train":
+                if value.tag == "train":
                     train_loss = value.simple_value
                     train.append([step, train_loss])
-                elif value.tag == "Loss/test":
+                elif value.tag == "test":
                     test_loss = value.simple_value
                     test.append([step, test_loss])
     train, test, train_time = np.array(train), np.array(test), (wall_time_end - wall_time_begin) / 3600
+    return train, test, train_time, tag
 
-    return train, test, train_time
+
+def get_all_event_files(save_dir):
+    templates = [save_dir + "*events.out.tfevents.*",
+                 save_dir + "*/*events.out.tfevents.*",
+                 save_dir + "*/*/*events.out.tfevents.*"]
+    all_event_files = []
+    for template in templates:
+        all_event_files += list(glob.iglob(template))
+    all_event_files = [os.path.join(os.getcwd(), x) for x in all_event_files]
+    return all_event_files
 
 
-def load_events(save_dir):
-    save_folder = os.path.join(os.getcwd(), save_dir)
-    event_file = [os.path.join(save_folder, x) for x in os.listdir(save_folder) if x.startswith('events')]
-    if len(event_file) == 0:
-        print("no event file was found")
+def plot_and_save_events(event, save_dir, save_files=True):
+    train_hist, test_hist, train_time, tag = event
+    if len(train_hist) > 0:
+        data = train_hist
+    elif len(test_hist) > 0:
+        data = test_hist
+    else:
         return
 
-    if len(event_file) > 1:
-        print("more than one event file was found. used the latest")
-    event_file = event_file[-1]
-    return event_file
+    plt.subplots(figsize=(6, 5))
+    plt.semilogy(data[:, 0], data[:, 1], 'k')
+    plt.xlabel("epochs")
+    plt.ylabel(tag)
+    plt.title("training time was %0.2f hours" % train_time)
 
-
-def plot_losses_from_event_file(save_dir, save_files=False):
-    event_file = load_events(save_dir)
-    train_hist, test_hist, train_time = parse_event_file(event_file)
-    plt.figure(figsize=(6, 6))
-    plt.semilogy(train_hist[:, 0], train_hist[:, 1], 'k')
-    plt.semilogy(test_hist[:, 0], test_hist[:, 1], 'k--')
-    plt.title('training time was %0.2f hours' % train_time)
     if save_files:
-        save_name = os.path.join(os.getcwd(), save_dir, 'loss.png')
+        save_name = os.path.join(os.getcwd(), save_dir, tag + ".jpg")
         plt.savefig(save_name)
     else:
         plt.show()
 
 
-def plot_scatter_contour_3d(points, true_vals, pred_vals, levels=None, save_name=None):
-    ends, n_pts = 0.9, 100
-    n_pnts_c = n_pts * 1j
-    x = np.linspace(-ends, ends, n_pts, endpoint=True)
-    X, Y, Z = np.mgrid[-ends:ends:n_pnts_c, -ends:ends:n_pnts_c, -ends:ends:n_pnts_c]
-    SDFS_true = griddata(points, true_vals, (X, Y, Z))
-    SDFS_pred = griddata(points, pred_vals, (X, Y, Z))
+def plot_losses(save_dir):
+    all_event_files = get_all_event_files(save_dir)
+    for event_file in all_event_files:
+        event = parse_event_file(event_file)
+        plot_and_save_events(event, save_dir)
+
+
+def plot_2d_contours(points, true_vals, pred_vals, levels=None, save_name=None, interpolate=True):
+    if interpolate:
+        ends, grid_size = 0.9, 100
+        n_pnts_c = grid_size * 1j
+        x = np.linspace(-ends, ends, grid_size, endpoint=True)
+        X, Y, Z = np.mgrid[-ends:ends:n_pnts_c, -ends:ends:n_pnts_c, -ends:ends:n_pnts_c]
+        SDFS_true = griddata(points, true_vals, (X, Y, Z))
+        SDFS_pred = griddata(points, pred_vals, (X, Y, Z))
+    else:  # already in grid format
+        volume_points_mask = true_vals != 0
+        n_volume_points = volume_points_mask.sum()
+        grid_size = round(n_volume_points ** (1 / 3))
+        assert grid_size ** 3 == n_volume_points
+
+        x = np.linspace(-1, 1, grid_size, endpoint=True)
+        SDFS_true = true_vals[volume_points_mask].reshape(grid_size, grid_size, grid_size)
+        SDFS_pred = pred_vals[volume_points_mask].reshape(grid_size, grid_size, grid_size)
+
     fig, axes = plt.subplots(figsize=(25, 15), nrows=3, ncols=3)
     for i in range(3):
         ax1, ax2, ax3 = axes[i]
-        z_slice = 40 * i + 10
+        z_slice = round((0.1 + 0.4*i) * grid_size)
         cntr1 = ax1.contour(x, x, SDFS_true[:, :, z_slice], levels=levels, linewidths=1, colors='k')
         plt.clabel(cntr1, fmt='%0.2f', colors='k', fontsize=10)
         cntr1 = ax1.contourf(x, x, SDFS_true[:, :, z_slice], cmap="RdBu_r", levels=20)

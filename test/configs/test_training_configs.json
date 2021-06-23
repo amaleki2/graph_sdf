@@ -1,6 +1,6 @@
 {
     "train": {
-        "loss_func": "l1",
+        "loss_funcs": "l1",
         "n_epochs": 5,
         "print_every": 2,
         "save_every": 2,
