@@ -60,14 +60,10 @@ class ExampleSDFTraining:
         train_sdf(model, train_dataloader, test_dataloader, **train_params)
 
     def test(self):
+        test_params = self.training_configs['test']
         model = self.get_network()
         data_dl, _ = self.get_dataloader(test=True)
-        try:
-            with_3d_surface = self.data_configs['test_data']['node_params']['grid_resolution']
-        except KeyError:
-            with_3d_surface = False
-
-        test_and_visualize(model, data_dl, device='cuda', save_files=True, with_3d_surface=with_3d_surface)
+        test_and_visualize(model, data_dl, **test_params)
 
 
 example = ExampleSDFTraining(parser.example_folder)
