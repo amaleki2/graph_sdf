@@ -159,7 +159,7 @@ class SDF3dDataTest(unittest.TestCase):
         data_configs = os.path.join(parent_dir, "configs", "test_data_configs.json")
         with open(data_configs, "rb") as fid:
             configs = json.load(fid)
-        configs = configs['SDF3dData']
+        configs = configs['train_data']
         data_handler = SDF3dData(**configs)
         data_handler.mesh_to_dataloader()
 

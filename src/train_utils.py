@@ -4,6 +4,8 @@ import torch
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
 
+from .render.diff_sdf_render import render_surface_img
+
 
 def find_best_gpu():
     # this function finds the GPU with most free memory.
@@ -57,6 +59,29 @@ def graph_loss_banded(data, loss_func=torch.nn.L1Loss(), data_parallel=False, in
     return loss
 
 
+def graph_loss_render(data, loss_func=torch.nn.L1Loss(), camera_pos=None, data_parallel=False, box=None, img_size=None):
+    # split batches
+    if data_parallel:
+        raise NotImplemented
+
+    if camera_pos is None:
+        camera_pos = torch.rand(3, device=data.x.device)
+
+    loss_value = 0
+    left_idx = 0
+    batches = torch.cumsum(torch.bincount(data.batch), 0)
+    for right_idx in batches:
+        sdf_pred = data.x[left_idx:right_idx]
+        sdf_truth = data.y[left_idx:right_idx]
+        n_surface_nodes = (sdf_truth == 0).sum()  # we should skip the surface nodes. they have sdf=0.
+        img_pred = render_surface_img(sdf_pred[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+        img_truth = render_surface_img(sdf_truth[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+        loss_value += loss_func(img_pred, img_truth)
+        left_idx = right_idx
+
+    return loss_value / len(batches)
+
+
 def get_loss_funcs(loss_funcs, data_parallel):
     funcs = []
     if not isinstance(loss_funcs, list):
@@ -69,6 +94,8 @@ def get_loss_funcs(loss_funcs, data_parallel):
             func = lambda x: graph_loss(x, loss_func=torch.nn.MSELoss(), data_parallel=data_parallel)
         elif loss_func == 'banded_l1':
             func = lambda x: graph_loss_banded(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
+        elif loss_func == 'render_l1':
+            func = lambda x: graph_loss_render(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
         else:
             raise ValueError
         funcs.append(func)
@@ -119,5 +146,5 @@ def print_to_screen(epoch, optimizer, train_loss, test_loss=None):
         print(", train loss %d: %0.4f" % (i, l.item()), end="")
     if test_loss:
         for i, l in enumerate(test_loss):
-            print(", test loss %d: %0.4f", (i, l.item()), end="")
+            print(", test loss %d: %0.4f" % (i, l.item()), end="")
     print("")

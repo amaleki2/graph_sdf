@@ -17,7 +17,7 @@ class SDFTrainTest(unittest.TestCase):
         data_configs = os.path.join(parent_dir, "configs", "test_data_configs.json")
         with open(data_configs, "rb") as fid:
             configs = json.load(fid)
-        configs = configs['SDF3dData']
+        configs = configs['train_data']
         data_handler = SDF3dData(**configs)
         train_dl, test_dl = data_handler.mesh_to_dataloader()
         return train_dl, test_dl
@@ -42,7 +42,16 @@ class SDFTrainTest(unittest.TestCase):
         func = get_loss_funcs(loss_func, data_parallel)[0]
         train_dl, _ = self.get_dataloaders()
         data = next(iter(train_dl))
-        data.x = data.x[:, :1]
+        data.x = torch.norm(data.x, dim=1) - 0.5
+        func(data)
+
+    def test_render_loss(self):
+        loss_func = 'render_l1'
+        data_parallel = False
+        func = get_loss_funcs(loss_func, data_parallel)[0]
+        train_dl, _ = self.get_dataloaders()
+        data = next(iter(train_dl)).to(device='cuda')
+        data.x = torch.norm(data.x, dim=1) - 0.5
         func(data)
 
     def test_train(self):

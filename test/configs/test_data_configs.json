@@ -1,9 +1,10 @@
 {
-    "SDF3dData": {
+    "train_data": {
         "node_params": {
             "n_volume_points": null,
             "on_surface_only": true,
-            "scaler": 2
+            "scaler": 2,
+            "grid_resolution": 8
         },
         "edge_params": {
             "edge_method": "mesh_edge",
