@@ -144,7 +144,7 @@ def print_to_screen(epoch, optimizer, train_loss, test_loss=None):
     print("epoch %4s: learning rate=%0.2e" % (str(epoch), lr), end="")
     for i, l in enumerate(train_loss):
         print(", train loss %d: %0.4f" % (i, l.item()), end="")
-    if test_loss:
+    if test_loss is not None and len(test_loss) > 0:
         for i, l in enumerate(test_loss):
             print(", test loss %d: %0.4f" % (i, l.item()), end="")
     print("")
