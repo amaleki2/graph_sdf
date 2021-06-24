@@ -42,16 +42,17 @@ class SDFTrainTest(unittest.TestCase):
         func = get_loss_funcs(loss_func, data_parallel)[0]
         train_dl, _ = self.get_dataloaders()
         data = next(iter(train_dl))
-        data.x = torch.norm(data.x, dim=1) - 0.5
+        data.x = torch.norm(data.x, dim=1, keepdim=True) - 0.5
         func(data)
 
     def test_render_loss(self):
         loss_func = 'render_l1'
         data_parallel = False
+        device = get_device('cuda')[0]
         func = get_loss_funcs(loss_func, data_parallel)[0]
         train_dl, _ = self.get_dataloaders()
-        data = next(iter(train_dl)).to(device='cuda')
-        data.x = torch.norm(data.x, dim=1) - 0.5
+        data = next(iter(train_dl)).to(device=device)
+        data.x = torch.norm(data.x, dim=1, keepdim=True) - 0.5
         func(data)
 
     def test_train(self):
