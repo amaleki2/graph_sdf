@@ -97,6 +97,8 @@ def get_intersection_normal_helper(dsdf, ix, iy, iz, n, final_shape):
 
 
 def check_inputs(sdf_grid, box):
+    assert sdf_grid.get_device() >= 0, "the rendering only works with GPU."
+
     ndims = sdf_grid.dim()
     assert ndims <= 3, "sdf grid is a %d dimensional tensor, can't be converted to grid-like data" % (ndims)
     if ndims == 1:
@@ -121,6 +123,7 @@ def check_inputs(sdf_grid, box):
 
 def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
     check_inputs(sdf_grid, box)
+    device = sdf_grid.device
     if img_size is None:
         width, height = 200, 200
     else:
@@ -134,7 +137,7 @@ def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
         bounding_box_max_x, bounding_box_max_y, bounding_box_max_z = box[1]
 
     if camera_pos is None:
-        camera_pos = torch.tensor([2.0, 2.0, 2.0], device='cuda')
+        camera_pos = torch.tensor([2.0, 2.0, 2.0], device=device)
 
     if sdf_grid.dim() <= 2:
         grid_res = round(sdf_grid.size(0) ** (1/3))
@@ -151,8 +154,8 @@ def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
     dsdf_dx, dsdf_dy, dsdf_dz = dsdf_dx.view(-1), dsdf_dy.view(-1), dsdf_dz.view(-1)
 
     # Do ray tracing in cpp
-    w_h = torch.zeros(width, height, device='cuda')
-    w_h_3 = torch.zeros(width, height, 3, device='cuda')
+    w_h = torch.zeros(width, height, device=device)
+    w_h_3 = torch.zeros(width, height, 3, device=device)
     intersection_pos_rough, voxel_min_point_index, ray_direction = \
         renderer.ray_matching(w_h_3, w_h, sdf_grid, width, height,
                               bounding_box_min_x, bounding_box_min_y, bounding_box_min_z,
@@ -186,7 +189,7 @@ def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
     intersection_grid_normal_z = intersection_grid_normal_z + 1 - mask.view(final_shape).repeat(1, 1, 8)
 
     # Change from grid coordinates to world coordinates
-    voxel_min_point = torch.tensor([bounding_box_min_x, bounding_box_min_y, bounding_box_min_z], device='cuda')
+    voxel_min_point = torch.tensor([bounding_box_min_x, bounding_box_min_y, bounding_box_min_z], device=device)
     voxel_min_point = voxel_min_point + voxel_min_point_index * voxel_size
 
     intersection_pos = compute_intersection_pos(sdf_grid, intersection_pos_rough,
@@ -217,7 +220,7 @@ def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
     light_direction = (camera_pos / torch.norm(camera_pos)).repeat(width, height, 1)
     l_dot_n = torch.sum(light_direction * intersection_normal, dim=2, keepdim=True)
 
-    numer = torch.max(l_dot_n, torch.zeros(width, height, 1, device='cuda'))[:, :, 0]
+    numer = torch.max(l_dot_n, torch.zeros(width, height, 1, device=device))[:, :, 0]
     denom = torch.sum((light_position - intersection_pos) * light_direction_point, dim=2) ** 2
     shading = 10 * numer / denom
 
