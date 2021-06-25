@@ -42,6 +42,8 @@ def get_loss_func_aggr(loss_func_aggr):
         loss_func = torch.nn.L1Loss()
     elif loss_func_aggr == 'l2':
         loss_func = torch.nn.MSELoss()
+    elif loss_func_aggr == 'l0.5':
+        loss_func = lambda x, y: torch.mean(abs(x - y) ** 0.5)
     else:
         raise ValueError
 

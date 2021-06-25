@@ -60,7 +60,7 @@ def plot_and_save_events(event, save_dir, save_files=True):
     else:
         return
 
-    plt.figure(figsize=(8, 6))
+    plt.subplots(figsize=(6, 5))
     plt.semilogy(data[:, 0], data[:, 1], 'k')
     plt.xlabel("epochs")
     plt.ylabel(tag)
