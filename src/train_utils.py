@@ -80,13 +80,10 @@ def render_loss(data, data_parallel=False, loss_func_aggr='l1', camera_pos=None,
     if data_parallel:
         raise NotImplemented
 
-    if camera_pos is None:
-        camera_pos = torch.rand(3, device=data.x.device)
-
     loss_value = 0
     left_idx = 0
-    batches = torch.cumsum(torch.bincount(data.batch), 0)
     loss_func = get_loss_func_aggr(loss_func_aggr)
+    batches = torch.cumsum(torch.bincount(data.batch), 0)
     for right_idx in batches:
         sdf_pred = data.x[left_idx:right_idx]
         sdf_truth = data.y[left_idx:right_idx]
@@ -178,3 +175,22 @@ def write_to_tensorboard(epoch, epoch_losses, tf_writer, tag):
                        for loss_name in loss_names}
     tf_writer.add_scalars(tag, tb_scalars_dict, epoch)
 
+
+def write_rendered_image_to_file(data, epoch, save_folder_name, camera_pos=None, box=None, img_size=None):
+    from torchvision.utils import save_image
+    render_image_folder = os.path.join(save_folder_name, "render_img")
+    if not os.path.isdir(render_image_folder):
+        os.makedirs(render_image_folder)
+
+    batches = torch.cumsum(torch.bincount(data.batch), 0)
+    # only plot last batch
+    left_idx = batches[-2] if len(batches) >= 2 else 0
+    right_idx = batches[-1]
+    with torch.no_grad():
+        sdf_pred = data.x[left_idx:right_idx]
+        sdf_truth = data.y[left_idx:right_idx]
+        n_surface_nodes = (sdf_truth == 0).sum()  # we should skip the surface nodes. they have sdf=0.
+        img_pred = render_surface_img(sdf_pred[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+        img_truth = render_surface_img(sdf_truth[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+        save_image(img_truth, os.path.join(render_image_folder, "img_%d_gt.jpg" % epoch))
+        save_image(img_pred, os.path.join(render_image_folder, "img_%d_pr.jpg" % epoch))

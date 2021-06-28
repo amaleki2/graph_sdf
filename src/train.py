@@ -50,14 +50,14 @@ def train_sdf(model,
         test_epoch_losses = []
         if epoch % print_every == 0 and len(test_dl) > 0:
             with torch.no_grad():
-                for data in test_dl:
+                for i, data in enumerate(test_dl):
                     model.eval()
                     if not data_parallel:
                         data = data.to(device)
                     pred = model(data)
                     test_losses = composite_loss_func(pred)
                     test_epoch_losses.append(test_losses)
-
+                    if i == 0: write_rendered_image_to_file(pred, epoch, save_folder_name)
             write_to_tensorboard(epoch, test_epoch_losses, tf_writer, 'test')
 
         write_to_screen(epoch, optimizer, train_epoch_losses, test_losses=test_epoch_losses)
