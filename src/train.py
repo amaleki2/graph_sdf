@@ -5,12 +5,13 @@ from .train_utils import *
 def train_sdf(model,
               train_dl,
               test_dl,
+              pretrained_model_weights=None,
               loss_funcs=None,
               n_epochs=500,
               print_every=25,
               save_every=25,
               device='cpu',
-              save_folder_name="save",
+              save_folder_name='save',
               optimizer='Adam',
               lr_0=0.001,
               lr_scheduler_params=None):
@@ -23,6 +24,11 @@ def train_sdf(model,
     scheduler = get_scheduler(optimizer, **lr_scheduler_params)
     composite_loss_func = get_loss_funcs(loss_funcs, data_parallel)
     tf_writer = get_summary_writer(save_folder_name)
+
+    if pretrained_model_weights:
+        model_path = os.path.join(os.getcwd(), save_folder_name, pretrained_model_weights)
+        model_weights = torch.load(model_path, map_location=device)["model_state_dict"]
+        model.load_state_dict(model_weights)
 
     if data_parallel:
         device0 = torch.device('cuda:%d'%device[0])
