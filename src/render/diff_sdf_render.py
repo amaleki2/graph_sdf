@@ -139,6 +139,9 @@ def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
     if camera_pos is None:
         camera_pos = torch.rand(3, device=device) - 0.5  # generate randomly between [-0.5, 0.5]
         camera_pos *= 2 / camera_pos.norm()  # making sure camera is outside object.
+    else:
+        camera_pos = torch.tensor(camera_pos, device=device)
+
 
 
     if sdf_grid.dim() <= 2:
