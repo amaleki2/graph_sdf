@@ -2,6 +2,8 @@ import os
 import sys
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -150,3 +152,40 @@ def write_to_tensorboard(epoch, epoch_losses, tf_writer, tag):
     tb_scalars_dict = {loss_name: torch.tensor([e[loss_name] for e in epoch_losses]).mean(dim=0)
                        for loss_name in loss_names}
     tf_writer.add_scalars(tag, tb_scalars_dict, epoch)
+
+
+def write_gradients_to_file(named_parameters, epoch, save_folder_name):
+    """
+    https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10
+    """
+    ave_grads = []
+    max_grads = []
+    layers = []
+    plt.figure(figsize=(6, 6))
+    for n, p in named_parameters:
+        if (p.requires_grad) and ('bias' not in n):
+            layers.append(n.replace('weight', ''))
+            ave_grads.append(p.grad.abs().mean())
+            max_grads.append(p.grad.abs().max())
+    plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.6, lw=1, color="c")
+    plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.4, lw=1, color="b")
+    plt.hlines(0, 0, len(ave_grads) + 1, lw=2, color="k")
+    plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
+    plt.gca().tick_params(axis='x', direction="in")
+    plt.xlim(left=0, right=len(ave_grads))
+    plt.ylim(bottom=-0.001, top=1.0)  # zoom in on the lower gradient regions
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
+    plt.legend([Line2D([0], [0], color="c", lw=4),
+                Line2D([0], [0], color="b", lw=4),
+                Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+    plt.tight_layout()
+
+    grads_dir = os.path.join(save_folder_name, "grads")
+    if not os.path.isdir(grads_dir):
+        os.makedirs(grads_dir)
+    save_name = os.path.join(grads_dir, "grads_%d.jpg" % epoch)
+    plt.savefig(save_name)
+    plt.close()
