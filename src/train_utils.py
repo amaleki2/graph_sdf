@@ -217,7 +217,7 @@ def write_gradients_to_file(named_parameters, epoch, save_folder_name):
     plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
     plt.gca().tick_params(axis='x', direction="in")
     plt.xlim(left=0, right=len(ave_grads))
-    plt.ylim(bottom=-0.001, top=0.02)  # zoom in on the lower gradient regions
+    plt.ylim(bottom=-0.001, top=1.0)  # zoom in on the lower gradient regions
     plt.xlabel("Layers")
     plt.ylabel("average gradient")
     plt.title("Gradient flow")
