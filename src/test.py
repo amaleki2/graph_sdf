@@ -9,6 +9,7 @@ def test_and_visualize(model,
                        save_losses=True,
                        save_3d_surface=True,
                        save_2d_contours=True,
+                       save_2d_rendered_image=True,
                        save_folder_name="save"):
 
     if save_losses:
@@ -24,21 +25,27 @@ def test_and_visualize(model,
             model.eval()
             data = data.to(device)
             points = data.x[:, :3].cpu().numpy()
-            pred_val = model(data).x.cpu().numpy().reshape(-1)
-            true_val = data.y.cpu().numpy().reshape(-1)
+            pred = model(data)
+            pred_sdf = pred.x.cpu().numpy().reshape(-1)
+            true_sdf = data.y.cpu().numpy().reshape(-1)
 
             if save_2d_contours:
                 interpolate = not save_3d_surface  # if true, already grid format, no interpolation necessary.
                 save_name_fig = os.path.join(os.getcwd(), save_folder_name, 'fig%d.jpg'%i)
-                plot_2d_contours(points, true_val, pred_val, save_name=save_name_fig,
+                plot_2d_contours(points, true_sdf, pred_sdf, save_name=save_name_fig,
                                  levels=np.linspace(-0.45, 0.45, 7), interpolate=interpolate)
+
+            if save_2d_rendered_image:
+                save_name_fig = [os.path.join(os.getcwd(), save_folder_name, 'true_render_fig%d.jpg' % i),
+                                 os.path.join(os.getcwd(), save_folder_name, 'pred_render_fig%d.jpg' % i)]
+                plot_2d_rendered_image(pred, save_name=save_name_fig)
 
             if save_3d_surface:
                 save_name_msh = [os.path.join(os.getcwd(), save_folder_name, 'true_surface_mesh%d.obj'%i),
                                  os.path.join(os.getcwd(), save_folder_name, 'pred_surface_mesh%d.obj' % i)]
-                plot_surface_mesh(true_val, pred_val, save_names=save_name_msh, level=0)
+                plot_surface_mesh(true_sdf, pred_sdf, save_names=save_name_msh, level=0)
 
 
-            predictions.append([points, true_val, pred_val])
+            predictions.append([points, true_sdf, pred_sdf])
 
     return predictions

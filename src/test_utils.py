@@ -8,6 +8,8 @@ from scipy.interpolate import griddata
 from skimage.measure import marching_cubes
 from tensorflow.python.summary.summary_iterator import summary_iterator
 
+from .render.diff_sdf_render import render_surface_img
+
 
 def load_latest(model, save_dir, device):
     model_latest_path = os.path.join(os.getcwd(), save_dir, "model_latest.pth")
@@ -139,6 +141,17 @@ def plot_2d_contours(points, true_vals, pred_vals, levels=None, save_name=None, 
         plt.show()
     else:
         plt.savefig(save_name)
+
+
+def plot_2d_rendered_image(pred, save_name=None, camera_pos=None, box=None, img_size=None):
+    from torchvision.utils import save_image
+    true_vals, pred_vals = pred.y, pred.x
+    n_surface_nodes = (true_vals == 0).sum()  # we should skip the surface nodes. they have sdf=0.
+    img_pred = render_surface_img(pred_vals[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+    img_truth = render_surface_img(true_vals[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+    if save_name is not None:
+        save_image(img_truth, save_name[0])
+        save_image(img_pred, save_name[1])
 
 
 def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):
