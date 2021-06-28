@@ -6,6 +6,7 @@ def train_sdf(model,
               train_dl,
               test_dl,
               pretrained_model_weights=None,
+              plot_gradients=False,
               loss_funcs=None,
               n_epochs=500,
               print_every=25,
@@ -50,6 +51,9 @@ def train_sdf(model,
             train_epoch_losses.append(losses)
             loss.backward()
             optimizer.step()
+
+        if plot_gradients:
+            write_gradients_to_file(model.named_parameters(), epoch, save_folder_name)
 
         write_to_tensorboard(epoch, train_epoch_losses, tf_writer, 'train')
 
