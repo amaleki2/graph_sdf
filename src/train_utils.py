@@ -178,8 +178,14 @@ def write_to_tensorboard(epoch, epoch_losses, tf_writer, tag):
     tf_writer.add_scalars(tag, tb_scalars_dict, epoch)
 
 
+def plot_rendering_contours(img, save_fig, with_levels=False):
+    plt.contourf(img.detach().cpu().numpy(), 50, cmap='gray')
+    if with_levels:
+        plt.contour(img.detach().cpu().numpy(), levels=10, colors='k')
+    plt.savefig(save_fig)
+
+
 def write_rendered_image_to_file(data, epoch, save_folder_name, camera_pos=None, box=None, img_size=None):
-    from torchvision.utils import save_image
     render_image_folder = os.path.join(save_folder_name, "render_img")
     if not os.path.isdir(render_image_folder):
         os.makedirs(render_image_folder)
@@ -194,8 +200,8 @@ def write_rendered_image_to_file(data, epoch, save_folder_name, camera_pos=None,
         n_surface_nodes = (sdf_truth == 0).sum()  # we should skip the surface nodes. they have sdf=0.
         img_pred = render_surface_img(sdf_pred[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
         img_truth = render_surface_img(sdf_truth[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
-        save_image(img_truth, os.path.join(render_image_folder, "img_%d_gt.jpg" % epoch))
-        save_image(img_pred, os.path.join(render_image_folder, "img_%d_pr.jpg" % epoch))
+        plot_rendering_contours(img_truth, os.path.join(render_image_folder, "img_%d_gt.jpg" % epoch))
+        plot_rendering_contours(img_pred, os.path.join(render_image_folder, "img_%d_pr.jpg" % epoch))
 
 
 def write_gradients_to_file(named_parameters, epoch, save_folder_name):
