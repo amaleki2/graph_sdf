@@ -154,7 +154,7 @@ def plot_2d_rendered_image(pred, save_name=None, camera_pos=None, box=None, img_
         save_image(img_pred, save_name[1])
 
 
-def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):
+def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=0):
     verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
     mesh = trimesh.Trimesh(verts, faces)
     if save_name is None:
