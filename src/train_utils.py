@@ -9,6 +9,21 @@ from torch.utils.tensorboard import SummaryWriter
 from .render.diff_sdf_render import render_surface_img
 
 
+def apply_pretrained_model_weights(model, params):
+    model_path = params['model_path']
+    model_freeze_weights = params['model_freeze_weights']
+    device = next(iter(model.parameters())).device
+    model_weights = torch.load(model_path, map_location=device)["model_state_dict"]
+    model.load_state_dict(model_weights)
+    if model_freeze_weights is not None:
+        import re
+        for key, param in model.named_parameters():
+            for pattern in model_freeze_weights:
+                if re.match(pattern, key):
+                    param.requires_grad_(False)
+                    break
+
+
 def find_best_gpu():
     # this function finds the GPU with most free memory.
     if 'linux' in sys.platform and torch.cuda.device_count() > 1:
@@ -185,7 +200,12 @@ def plot_rendering_contours(img, save_fig, with_levels=False):
     plt.savefig(save_fig)
 
 
-def write_rendered_image_to_file(data, epoch, save_folder_name, camera_pos=None, box=None, img_size=None):
+def write_rendered_image_to_file(data, epoch, save_folder_name, loss_funcs):
+    if 'render_loss' not in loss_funcs:
+        return
+
+    rendering_params = loss_funcs['render_loss']
+    camera_pos, box, img_size = rendering_params['camera_pos'], rendering_params['box'], rendering_params['img_size']
     render_image_folder = os.path.join(save_folder_name, "render_img")
     if not os.path.isdir(render_image_folder):
         os.makedirs(render_image_folder)

@@ -137,8 +137,7 @@ def render_surface_img(sdf_grid, camera_pos=None, box=None, img_size=None):
         bounding_box_max_x, bounding_box_max_y, bounding_box_max_z = box[1]
 
     if camera_pos is None:
-        camera_pos = torch.rand(3, device=device) - 0.5  # generate randomly between [-0.5, 0.5]
-        camera_pos *= 1.5 / camera_pos.norm()           # making sure camera is outside object.
+        camera_pos = torch.tensor([1.1, 1.1, 1.1], device=device)
     elif isinstance(camera_pos, list):
         camera_pos = torch.tensor(camera_pos, device=device)
     elif isinstance(camera_pos, torch.Tensor):

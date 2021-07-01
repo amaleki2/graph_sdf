@@ -26,10 +26,8 @@ def train_sdf(model,
     composite_loss_func = get_loss_funcs(loss_funcs, data_parallel)
     tf_writer = get_summary_writer(save_folder_name)
 
-    if pretrained_model_weights:
-        model_path = os.path.join(os.getcwd(), save_folder_name, pretrained_model_weights)
-        model_weights = torch.load(model_path, map_location=device)["model_state_dict"]
-        model.load_state_dict(model_weights)
+    if pretrained_model_weights is not None:
+        apply_pretrained_model_weights(model, pretrained_model_weights)
 
     if data_parallel:
         device0 = torch.device('cuda:%d'%device[0])
@@ -67,7 +65,8 @@ def train_sdf(model,
                     pred = model(data)
                     test_losses = composite_loss_func(pred)
                     test_epoch_losses.append(test_losses)
-                    if i == 0: write_rendered_image_to_file(pred, epoch, save_folder_name)
+                    if i == 0:
+                        write_rendered_image_to_file(pred, epoch, save_folder_name, loss_funcs)
             write_to_tensorboard(epoch, test_epoch_losses, tf_writer, 'test')
 
         write_to_screen(epoch, optimizer, train_epoch_losses, test_losses=test_epoch_losses)

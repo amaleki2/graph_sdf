@@ -154,14 +154,18 @@ def plot_2d_rendered_image(pred, save_name=None, camera_pos=None, box=None, img_
         save_image(img_pred, save_name[1])
 
 
-def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=0):
-    verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
-    mesh = trimesh.Trimesh(verts, faces)
-    if save_name is None:
-        mesh.show()
-    else:
-        with open(save_name, 'wb') as fid:
-            mesh.export(fid, file_type='obj')
+def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=0.):
+    try:
+        verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
+        mesh = trimesh.Trimesh(verts, faces)
+        if save_name is None:
+            mesh.show()
+        else:
+            with open(save_name, 'wb') as fid:
+                mesh.export(fid, file_type='obj')
+    except ValueError:
+        print("surface can't be generated. Possibly sdf does not have a level set %f" % level)
+
 
 
 def plot_surface_mesh(true_sdfs, pred_sdfs, save_names=None, level=1):
