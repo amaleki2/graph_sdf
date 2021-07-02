@@ -28,7 +28,7 @@ class SDF3dData:
         self.dataloader_params = dataloader_params
 
     @staticmethod
-    def _get_node_attr(mesh, n_volume_points=None, on_surface_only=True, scaler=2, grid_resolution=None):
+    def _get_node_attr(mesh, n_volume_points=None, on_surface_only=True, scaler=2, grid_resolution=None, fourier=True):
         assert n_volume_points is None or grid_resolution is None, \
             "can specify grid_resolution and n_volume_points"
 
@@ -49,7 +49,16 @@ class SDF3dData:
         else:
             additional_feature = (all_sdfs < 0).reshape(-1, 1)
 
-        x = np.concatenate((all_points, additional_feature), axis=1)
+        if fourier:
+            n_fourier_modes = 17
+            fourier_features = []
+            for n in range(1, n_fourier_modes):
+                fourier_features.append(np.sin(all_points * n * np.pi))
+                fourier_features.append(np.cos(all_points * n * np.pi))
+            fourier_features = np.stack(fourier_features, 1).reshape(-1, (n_fourier_modes - 1) * 3 * 2)
+            x = np.concatenate((all_points, fourier_features, additional_feature), axis=1)
+        else:
+            x = np.concatenate((all_points, additional_feature), axis=1)
         x = x.astype(float)
         y = all_sdfs.reshape(-1, 1).astype(float)
         return x, y
