@@ -2,6 +2,8 @@ import os
 import sys
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -37,36 +39,58 @@ def get_device(device):
     return device, data_parallel
 
 
-def graph_loss(data, loss_func=torch.nn.L1Loss(), data_parallel=False, mask=None):
-    if not data_parallel:
-        if mask is None:
-            loss = loss_func(data.x, data.y)
-        else:
-            loss = loss_func(data.x[mask], data.y[mask])
-    else:
-        raise NotImplemented
-    return loss
-
-
-def graph_loss_banded(data, loss_func=torch.nn.L1Loss(), data_parallel=False, intervals=(0.01, 0.1), weights=(100, 10)):
-    loss = graph_loss(data, loss_func=loss_func, data_parallel=data_parallel)
-    for interval, weight in zip(intervals, weights):
-        mask = abs(data.y) < interval
-        added_loss = graph_loss(data, loss_func=loss_func, data_parallel=data_parallel, mask=mask)
-        loss = weight * added_loss
-    return loss
-
-
-def get_loss_func(loss_func, data_parallel):
-    if loss_func == 'l1':
-        func = lambda x: graph_loss(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
-    elif loss_func == 'l2':
-        func = lambda x: graph_loss(x, loss_func=torch.nn.MSELoss(), data_parallel=data_parallel)
-    elif loss_func == 'banded_l1':
-        func = lambda x: graph_loss_banded(x, loss_func=torch.nn.L1Loss(), data_parallel=data_parallel)
+def get_loss_func_aggr(loss_func_aggr):
+    if loss_func_aggr == 'l1':
+        loss_func = torch.nn.L1Loss()
+    elif loss_func_aggr == 'l2':
+        loss_func = torch.nn.MSELoss()
+    elif loss_func_aggr == 'l0.5':
+        loss_func = lambda x, y: torch.mean(abs(x - y) ** 0.5)
     else:
         raise ValueError
-    return func
+
+    return loss_func
+
+
+def sdf_loss(data, data_parallel=False, loss_func_aggr='l1', mask=None, coef=1.0):
+    loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
+    if not data_parallel:
+        if mask is None:
+            loss = loss_func_aggr(data.x, data.y)
+        else:
+            loss = loss_func_aggr(data.x[mask], data.y[mask])
+    else:
+        raise NotImplemented
+
+    loss *= coef
+    return loss
+
+
+def sdf_loss_banded(data, data_parallel=False, loss_func_aggr='l1', lower_bound=-0.1, upper_bound=0.1, coef=1.0):
+    mid_points = (lower_bound + upper_bound) / 2.0
+    radius = (upper_bound - lower_bound) / 2.0
+    mask = abs(data.y - mid_points) < radius
+    loss = sdf_loss(data, loss_func_aggr=loss_func_aggr, data_parallel=data_parallel, mask=mask)
+    loss *= coef
+    return loss
+
+
+def get_loss_funcs(loss_funcs, data_parallel):
+    LOSS_FUNC_NAME_DICT = {'sdf_loss': sdf_loss,
+                           'sdf_banded_loss': sdf_loss_banded}
+
+    if loss_funcs is None:
+        loss_funcs = {'sdf_loss': {}}
+
+    def compiled_loss_func(data, *args):
+        losses = {}
+        for loss_func, loss_funcs_params in loss_funcs.items():
+            f = LOSS_FUNC_NAME_DICT[loss_func]
+            losses[loss_func] = f(data, *args, data_parallel=data_parallel, **loss_funcs_params)
+
+        return losses
+
+    return compiled_loss_func
 
 
 def eikonal_loss_func(data, pred):
@@ -94,6 +118,22 @@ def get_scheduler(optim, scheduler_type="StepLR", step_size=1000, gamma=0.2):
     return scheduler
 
 
+def get_clip_gradients_func(clip_gradient_params):
+    if clip_gradient_params is None:
+        return
+
+    if clip_gradient_params['type'] == 'clip_grad_value':
+        clip_value = clip_gradient_params['clip_value']
+
+        def clip_gradient_func(model):
+            return torch.nn.utils.clip_grad_value_(model, clip_value)
+
+    else:
+        raise ValueError
+
+    return clip_gradient_func
+
+
 def get_summary_writer(save_folder_name):
     save_folder_name = os.path.join(os.getcwd(), save_folder_name)
     if not os.path.isdir(save_folder_name):
@@ -115,13 +155,62 @@ def save_latest(model, epoch, optimizer, save_dir, data_parallel):
     torch.save({"epoch": epoch, "optimizer_state_dict": optimizer.state_dict()}, optim_latest_path)
 
 
-def print_to_screen(epoch, optimizer, train_loss, test_loss=None):
+def write_to_screen(epoch, optimizer, train_losses, test_losses=None):
+    loss_names = train_losses[0].keys()
+    tb_scalars_dict = {loss_name: torch.tensor([e[loss_name] for e in train_losses]).mean(dim=0)
+                       for loss_name in loss_names}
     lr = optimizer.param_groups[0]['lr']
     print("epoch %4s: learning rate=%0.2e" % (str(epoch), lr), end="")
-    print(", train loss: ", end="")
-    print('%.4f' % train_loss, end="")
-    if test_loss:
-        print(", test loss: ", end="")
-        print('%.4f' % test_loss)
-    else:
-        print("")
+    for loss_name, loss_value in tb_scalars_dict.items():
+        print(", train %s: %0.4e" % (loss_name, loss_value.item()), end="")
+
+    if test_losses is not None and len(test_losses) > 0:
+        tb_scalars_dict = {loss_name: torch.tensor([e[loss_name] for e in test_losses]).mean(dim=0)
+                           for loss_name in loss_names}
+        for loss_name, loss_value in tb_scalars_dict.items():
+            print(", test %s: %0.4e" % (loss_name, loss_value.item()), end="")
+    print(".")
+
+
+def write_to_tensorboard(epoch, epoch_losses, tf_writer, tag):
+    loss_names = epoch_losses[0].keys()
+    tb_scalars_dict = {loss_name: torch.tensor([e[loss_name] for e in epoch_losses]).mean(dim=0)
+                       for loss_name in loss_names}
+    tf_writer.add_scalars(tag, tb_scalars_dict, epoch)
+
+
+def write_gradients_to_file(named_parameters, epoch, save_folder_name):
+    """
+    https://discuss.pytorch.org/t/check-gradient-flow-in-network/15063/10
+    """
+    ave_grads = []
+    max_grads = []
+    layers = []
+    plt.figure(figsize=(6, 6))
+    for n, p in named_parameters:
+        if (p.requires_grad) and ('bias' not in n):
+            layers.append(n.replace('weight', ''))
+            ave_grads.append(p.grad.abs().mean())
+            max_grads.append(p.grad.abs().max())
+    plt.bar(np.arange(len(max_grads)), max_grads, alpha=0.6, lw=1, color="c")
+    plt.bar(np.arange(len(max_grads)), ave_grads, alpha=0.4, lw=1, color="b")
+    plt.hlines(0, 0, len(ave_grads) + 1, lw=2, color="k")
+    plt.xticks(range(0, len(ave_grads), 1), layers, rotation="vertical")
+    plt.gca().tick_params(axis='x', direction="in")
+    plt.xlim(left=0, right=len(ave_grads))
+    plt.ylim(bottom=-0.001, top=1.0)  # zoom in on the lower gradient regions
+    plt.xlabel("Layers")
+    plt.ylabel("average gradient")
+    plt.title("Gradient flow")
+    plt.grid(True)
+    plt.legend([Line2D([0], [0], color="c", lw=4),
+                Line2D([0], [0], color="b", lw=4),
+                Line2D([0], [0], color="k", lw=4)], ['max-gradient', 'mean-gradient', 'zero-gradient'])
+    plt.tight_layout()
+
+    grads_dir = os.path.join(save_folder_name, "grads")
+    if not os.path.isdir(grads_dir):
+        os.makedirs(grads_dir)
+    save_name = os.path.join(grads_dir, "grads_%d.jpg" % epoch)
+    plt.savefig(save_name)
+    plt.close()
