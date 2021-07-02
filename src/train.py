@@ -65,8 +65,16 @@ def train_sdf(model,
                     pred = model(data)
                     test_losses = composite_loss_func(pred)
                     test_epoch_losses.append(test_losses)
-                    if i == 0:
-                        write_rendered_image_to_file(pred, epoch, save_folder_name, loss_funcs)
+
+                    if i == 0 and 'render_loss' in loss_funcs:
+                        camera_pos = loss_funcs['render_loss']['camera_pos']
+                        render_image_folder = os.path.join(save_folder_name, "render_img")
+                        if not os.path.isdir(render_image_folder):
+                            os.makedirs(render_image_folder)
+                        saved_names = [os.path.join(render_image_folder, "img_%d_pr.jpg" % epoch),
+                                       os.path.join(render_image_folder, "img_%d_gt.jpg" % epoch)]
+                        write_rendered_image_to_file(pred, saved_names, camera_pos=camera_pos)
+
             write_to_tensorboard(epoch, test_epoch_losses, tf_writer, 'test')
 
         write_to_screen(epoch, optimizer, train_epoch_losses, test_losses=test_epoch_losses)

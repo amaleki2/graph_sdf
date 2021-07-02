@@ -10,8 +10,8 @@ from .render.diff_sdf_render import render_surface_img
 
 
 def apply_pretrained_model_weights(model, params):
-    model_path = params['model_path']
-    model_freeze_weights = params['model_freeze_weights']
+    model_path = params['path']
+    model_freeze_weights = params['frozen_weights']
     device = next(iter(model.parameters())).device
     model_weights = torch.load(model_path, map_location=device)["model_state_dict"]
     model.load_state_dict(model_weights)
@@ -198,30 +198,21 @@ def plot_rendering_contours(img, save_fig, with_levels=False):
     if with_levels:
         plt.contour(img.detach().cpu().numpy(), levels=10, colors='k')
     plt.savefig(save_fig)
+    plt.close()
 
 
-def write_rendered_image_to_file(data, epoch, save_folder_name, loss_funcs):
-    if 'render_loss' not in loss_funcs:
-        return
+def write_rendered_image_to_file(data, save_folder_name, camera_pos=None):
+    pred_save_file, true_save_file = save_folder_name
 
-    rendering_params = loss_funcs['render_loss']
-    camera_pos, box, img_size = rendering_params['camera_pos'], rendering_params['box'], rendering_params['img_size']
-    render_image_folder = os.path.join(save_folder_name, "render_img")
-    if not os.path.isdir(render_image_folder):
-        os.makedirs(render_image_folder)
-
-    batches = torch.cumsum(torch.bincount(data.batch), 0)
-    # only plot last batch
-    left_idx = batches[-2] if len(batches) >= 2 else 0
-    right_idx = batches[-1]
+    # only plot first batch
     with torch.no_grad():
-        sdf_pred = data.x[left_idx:right_idx]
-        sdf_truth = data.y[left_idx:right_idx]
+        sdf_pred = data.x[data.batch == 0]
+        sdf_truth = data.y[data.batch == 0]
         n_surface_nodes = (sdf_truth == 0).sum()  # we should skip the surface nodes. they have sdf=0.
-        img_pred = render_surface_img(sdf_pred[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
-        img_truth = render_surface_img(sdf_truth[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
-        plot_rendering_contours(img_truth, os.path.join(render_image_folder, "img_%d_gt.jpg" % epoch))
-        plot_rendering_contours(img_pred, os.path.join(render_image_folder, "img_%d_pr.jpg" % epoch))
+        img_pred = render_surface_img(sdf_pred[n_surface_nodes:], camera_pos=camera_pos)
+        img_truth = render_surface_img(sdf_truth[n_surface_nodes:], camera_pos=camera_pos)
+        plot_rendering_contours(img_truth, true_save_file)
+        plot_rendering_contours(img_pred, pred_save_file)
 
 
 def write_gradients_to_file(named_parameters, epoch, save_folder_name):

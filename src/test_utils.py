@@ -141,17 +141,18 @@ def plot_2d_contours(points, true_vals, pred_vals, levels=None, save_name=None, 
         plt.show()
     else:
         plt.savefig(save_name)
+        plt.close()
 
 
-def plot_2d_rendered_image(pred, save_name=None, camera_pos=None, box=None, img_size=None):
-    from torchvision.utils import save_image
-    true_vals, pred_vals = pred.y, pred.x
-    n_surface_nodes = (true_vals == 0).sum()  # we should skip the surface nodes. they have sdf=0.
-    img_pred = render_surface_img(pred_vals[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
-    img_truth = render_surface_img(true_vals[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
-    if save_name is not None:
-        save_image(img_truth, save_name[0])
-        save_image(img_pred, save_name[1])
+# def plot_2d_rendered_image(pred, save_name=None, camera_pos=None, box=None, img_size=None):
+#     from torchvision.utils import save_image
+#     true_vals, pred_vals = pred.y, pred.x
+#     n_surface_nodes = (true_vals == 0).sum()  # we should skip the surface nodes. they have sdf=0.
+#     img_pred = render_surface_img(pred_vals[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+#     img_truth = render_surface_img(true_vals[n_surface_nodes:], camera_pos=camera_pos, box=box, img_size=img_size)
+#     if save_name is not None:
+#         save_image(img_truth, save_name[0])
+#         save_image(img_pred, save_name[1])
 
 
 def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=0.):
@@ -165,7 +166,6 @@ def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=0.):
                 mesh.export(fid, file_type='obj')
     except ValueError:
         print("surface can't be generated. Possibly sdf does not have a level set %f" % level)
-
 
 
 def plot_surface_mesh(true_sdfs, pred_sdfs, save_names=None, level=1):

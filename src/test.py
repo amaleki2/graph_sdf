@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from .train_utils import get_device
+from .train_utils import get_device, write_rendered_image_to_file
 from .test_utils import *
 
 
@@ -31,20 +31,19 @@ def test_and_visualize(model,
 
             if save_2d_contours:
                 interpolate = not save_3d_surface  # if true, already grid format, no interpolation necessary.
-                save_name_fig = os.path.join(os.getcwd(), save_folder_name, 'fig%d.jpg'%i)
+                save_name_fig = os.path.join(os.getcwd(), save_folder_name, 'fig%d.jpg' % i)
                 plot_2d_contours(points, true_sdf, pred_sdf, save_name=save_name_fig,
                                  levels=np.linspace(-0.45, 0.45, 7), interpolate=interpolate)
 
             if save_2d_rendered_image:
-                save_name_fig = [os.path.join(os.getcwd(), save_folder_name, 'true_render_fig%d.jpg' % i),
-                                 os.path.join(os.getcwd(), save_folder_name, 'pred_render_fig%d.jpg' % i)]
-                plot_2d_rendered_image(pred, save_name=save_name_fig)
+                saved_names = [os.path.join(save_folder_name, "img_pr_%d.jpg" % i),
+                               os.path.join(save_folder_name, "img_gr_%d.jpg" % i)]
+                write_rendered_image_to_file(pred, saved_names)
 
             if save_3d_surface:
-                save_name_msh = [os.path.join(os.getcwd(), save_folder_name, 'true_surface_mesh%d.obj'%i),
+                save_name_msh = [os.path.join(os.getcwd(), save_folder_name, 'true_surface_mesh%d.obj' % i),
                                  os.path.join(os.getcwd(), save_folder_name, 'pred_surface_mesh%d.obj' % i)]
                 plot_surface_mesh(true_sdf, pred_sdf, save_names=save_name_msh, level=0)
-
 
             predictions.append([points, true_sdf, pred_sdf])
 
