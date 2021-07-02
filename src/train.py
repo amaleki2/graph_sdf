@@ -8,6 +8,7 @@ def train_sdf(model,
               pretrained_model_weights=None,
               plot_gradients=False,
               loss_funcs=None,
+              clip_gradients=None,
               n_epochs=500,
               print_every=25,
               save_every=25,
@@ -24,6 +25,7 @@ def train_sdf(model,
     optimizer = get_optimizer(model, optimizer, lr_0)
     scheduler = get_scheduler(optimizer, **lr_scheduler_params)
     composite_loss_func = get_loss_funcs(loss_funcs, data_parallel)
+    clip_gradients_func = get_clip_gradients_func(clip_gradients)
     tf_writer = get_summary_writer(save_folder_name)
 
     if pretrained_model_weights:
@@ -50,6 +52,8 @@ def train_sdf(model,
             loss = sum(losses.values())
             train_epoch_losses.append(losses)
             loss.backward()
+            if clip_gradients is not None:
+                clip_gradients_func(model.parameters())
             optimizer.step()
 
         if plot_gradients:
