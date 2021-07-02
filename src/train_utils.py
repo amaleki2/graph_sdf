@@ -52,7 +52,39 @@ def get_loss_func_aggr(loss_func_aggr):
     return loss_func
 
 
-def sdf_loss(data, data_parallel=False, loss_func_aggr='l1', mask=None, coef=1.0):
+def get_numerical_diff(pred, model, data, dir, eps=1e-4):
+    data_copy = data.clone()
+    volume_points_indicator = data.x[:, -1] == 0
+    data_copy.x[volume_points_indicator, dir] += eps
+    dpred = model(data_copy)
+    diff = (dpred.x[volume_points_indicator] - pred.x[volume_points_indicator]) / eps
+    return diff
+
+
+def eikonal_loss(pred, model, data, eps=1e-4, loss_func_aggr='l2', data_parallel=False, coef=1.0):
+    if data_parallel:
+        raise NotImplemented
+
+    loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
+    dx = get_numerical_diff(pred, model, data, 0, eps=eps)
+    dy = get_numerical_diff(pred, model, data, 1, eps=eps)
+    dz = get_numerical_diff(pred, model, data, 2, eps=eps)
+    residuals = dx ** 2 + dy ** 2 + dz ** 2
+    loss = loss_func_aggr(residuals, torch.ones_like(residuals))
+    loss *= coef
+    return loss
+
+
+def eikonal_loss_autodiff(pred, data):
+    device = data.x.device
+    grad_initialized = torch.ones(pred.x.shape, device=device)
+    pred.x.backward(grad_initialized, retain_graph=True)
+    sdf_grad = torch.norm(data.x.grad[:, :3], dim=1)
+    loss = torch.mean(abs(sdf_grad - 1))
+    return loss
+
+
+def sdf_loss(data, *args, data_parallel=False, loss_func_aggr='l1', mask=None, coef=1.0):
     loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
     if not data_parallel:
         if mask is None:
@@ -66,7 +98,7 @@ def sdf_loss(data, data_parallel=False, loss_func_aggr='l1', mask=None, coef=1.0
     return loss
 
 
-def sdf_loss_banded(data, data_parallel=False, loss_func_aggr='l1', lower_bound=-0.1, upper_bound=0.1, coef=1.0):
+def sdf_loss_banded(data, *args, data_parallel=False, loss_func_aggr='l1', lower_bound=-0.1, upper_bound=0.1, coef=1.0):
     mid_points = (lower_bound + upper_bound) / 2.0
     radius = (upper_bound - lower_bound) / 2.0
     mask = abs(data.y - mid_points) < radius
@@ -77,29 +109,21 @@ def sdf_loss_banded(data, data_parallel=False, loss_func_aggr='l1', lower_bound=
 
 def get_loss_funcs(loss_funcs, data_parallel):
     LOSS_FUNC_NAME_DICT = {'sdf_loss': sdf_loss,
-                           'sdf_banded_loss': sdf_loss_banded}
+                           'sdf_banded_loss': sdf_loss_banded,
+                           'eikonal_loss': eikonal_loss}
 
     if loss_funcs is None:
         loss_funcs = {'sdf_loss': {}}
 
-    def compiled_loss_func(data, *args):
+    def compiled_loss_func(pred, *args):
         losses = {}
         for loss_func, loss_funcs_params in loss_funcs.items():
             f = LOSS_FUNC_NAME_DICT[loss_func]
-            losses[loss_func] = f(data, *args, data_parallel=data_parallel, **loss_funcs_params)
+            losses[loss_func] = f(pred, *args, data_parallel=data_parallel, **loss_funcs_params)
 
         return losses
 
     return compiled_loss_func
-
-
-def eikonal_loss_func(data, pred):
-    device = data.x.device
-    grad_initialized = torch.ones(pred.x.shape, device=device)
-    pred.x.backward(grad_initialized, retain_graph=True)
-    sdf_grad = torch.norm(data.x.grad[:, :3], dim=1)
-    loss = torch.mean(abs(sdf_grad - 1))
-    return loss
 
 
 def get_optimizer(model, optimizer, lr_0):
