@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from torch.utils.tensorboard import SummaryWriter
+from src.data_utils import compute_edge_features
 
 
 def find_best_gpu():
@@ -56,6 +57,7 @@ def get_numerical_diff(pred, model, data, dir, eps=1e-4):
     data_copy = data.clone()
     volume_points_indicator = data.x[:, -1] == 0
     data_copy.x[volume_points_indicator, dir] += eps
+    data_copy.e = compute_edge_features(data_copy.x, data_copy.edge_index)
     dpred = model(data_copy)
     diff = (dpred.x[volume_points_indicator] - pred.x[volume_points_indicator]) / eps
     return diff
