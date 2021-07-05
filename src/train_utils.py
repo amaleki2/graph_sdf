@@ -106,6 +106,22 @@ def get_scheduler(optim, scheduler_type="StepLR", step_size=1000, gamma=0.2):
     return scheduler
 
 
+def get_clip_gradients_func(clip_gradient_params):
+    if clip_gradient_params is None:
+        return
+
+    if clip_gradient_params['type'] == 'clip_grad_value':
+        clip_value = clip_gradient_params['clip_value']
+
+        def clip_gradient_func(model):
+            return torch.nn.utils.clip_grad_value_(model, clip_value)
+
+    else:
+        raise ValueError
+
+    return clip_gradient_func
+
+
 def get_summary_writer(save_folder_name):
     save_folder_name = os.path.join(os.getcwd(), save_folder_name)
     if not os.path.isdir(save_folder_name):
