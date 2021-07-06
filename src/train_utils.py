@@ -72,9 +72,24 @@ def sdf_loss_banded(data, data_parallel=False, loss_func_aggr='l1', lower_bound=
     return loss
 
 
+def sdf_dual_loss(data, data_parallel=False, loss_func_aggr='l1', coefs=None):
+    if coefs is None:
+        coefs = [1., 1.]
+
+    loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
+    continuous_loss = loss_func_aggr(data.x[:, :1], data.y)
+    labels = (data.y >= 0).to(torch.float32)
+    logits = torch.nn.Sigmoid()(data.x[:, 1:])
+    binary_loss = torch.nn.BCELoss()(logits, labels)
+
+    loss = continuous_loss * coefs[0] + binary_loss * coefs[1]
+    return loss
+
+
 def get_loss_funcs(loss_funcs, data_parallel):
     LOSS_FUNC_NAME_DICT = {'sdf_loss': sdf_loss,
-                           'sdf_banded_loss': sdf_loss_banded}
+                           'sdf_banded_loss': sdf_loss_banded,
+                           'sdf_dual_loss': sdf_dual_loss}
 
     if loss_funcs is None:
         loss_funcs = {'sdf_loss': {}}
