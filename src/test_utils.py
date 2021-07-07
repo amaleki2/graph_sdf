@@ -141,15 +141,65 @@ def plot_2d_contours(points, true_vals, pred_vals, levels=None, save_name=None, 
         plt.savefig(save_name)
 
 
-def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):
-    verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
-    mesh = trimesh.Trimesh(verts, faces)
-    if save_name is None:
-        mesh.show()
-    else:
-        with open(save_name, 'wb') as fid:
-            mesh.export(fid, file_type='obj')
+def plot_2d_contours_sgn(points, true_vals, pred_vals, mask=None, save_name=None, interpolate=True):
+    if interpolate:
+        ends, grid_size = 0.9, 100
+        n_pnts_c = grid_size * 1j
+        x = np.linspace(-ends, ends, grid_size, endpoint=True)
+        X, Y, Z = np.mgrid[-ends:ends:n_pnts_c, -ends:ends:n_pnts_c, -ends:ends:n_pnts_c]
+        SDFS_true = griddata(points, true_vals, (X, Y, Z))
+        SDFS_pred = griddata(points, pred_vals, (X, Y, Z))
+    else:  # already in grid format
+        grid_size = round(mask.sum() ** (1 / 3))
+        assert grid_size ** 3 == mask.sum()
 
+        x = np.linspace(-1, 1, grid_size, endpoint=True)
+        SDFS_true = true_vals[mask].reshape(grid_size, grid_size, grid_size)
+        SDFS_pred = pred_vals[mask].reshape(grid_size, grid_size, grid_size)
+
+    fig, axes = plt.subplots(figsize=(25, 15), nrows=3, ncols=3)
+    for i in range(3):
+        ax1, ax2, ax3 = axes[i]
+        z_slice = round((0.1 + 0.4*i) * grid_size)
+        ax1.contourf(x, x, SDFS_true[:, :, z_slice], cmap="binary")
+        ax1.set(xlim=(-1, 1), ylim=(-1, 1))
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+        ax1.title.set_text('Ground Truth at z=%0.2f' %x[z_slice])
+
+        ax2.contourf(x, x, SDFS_pred[:, :, z_slice], cmap="binary")
+        ax2.set(xlim=(-1, 1), ylim=(-1, 1))
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+        ax2.title.set_text('Prediction at z=%0.2f' %x[z_slice])
+
+        cntr3 = ax3.contour(x, x, SDFS_true[:, :, z_slice], levels=[0], linewidths=2, colors='k')
+        plt.clabel(cntr3, fmt='%0.2f', colors='k', fontsize=10)
+        ax3.contour(x, x, SDFS_pred[:, :, z_slice], levels=[0], linewidths=1, colors='r')
+        ax3.set(xlim=(-1, 1), ylim=(-1, 1))
+        ax3.set_xticks([])
+        ax3.set_yticks([])
+        ax3.title.set_text('Comparison at z=%0.2f' %x[z_slice])
+    plt.subplots_adjust(wspace=0.25)
+    fig.suptitle('Results with %d volume points' % (true_vals != 0).sum())
+
+    if save_name is None:
+        plt.show()
+    else:
+        plt.savefig(save_name)
+
+
+def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):
+    try:
+        verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
+        mesh = trimesh.Trimesh(verts, faces)
+        if save_name is None:
+            mesh.show()
+        else:
+            with open(save_name, 'wb') as fid:
+                mesh.export(fid, file_type='obj')
+    except ValueError:
+        print("Surface level must be within volume data range.")
 
 def plot_surface_mesh(true_sdfs, pred_sdfs, save_names=None, level=1):
     volume_points_mask = true_sdfs != 0
