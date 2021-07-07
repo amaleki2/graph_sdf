@@ -139,6 +139,7 @@ def plot_2d_contours(points, true_vals, pred_vals, levels=None, save_name=None, 
         plt.show()
     else:
         plt.savefig(save_name)
+        plt.close()
 
 
 def plot_2d_contours_sgn(points, true_vals, pred_vals, mask=None, save_name=None, interpolate=True):
@@ -187,6 +188,7 @@ def plot_2d_contours_sgn(points, true_vals, pred_vals, mask=None, save_name=None
         plt.show()
     else:
         plt.savefig(save_name)
+        plt.close()
 
 
 def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):

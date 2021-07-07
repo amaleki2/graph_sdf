@@ -25,6 +25,7 @@ def test_and_visualize(model,
             data = data.to(device)
             points = data.x[:, :3].cpu().numpy()
             pred_val, pred_sgn = model(data).x.cpu().numpy().T
+            pred_sgn = 1 / (1 + np.exp(-pred_sgn)) > 0.5
             true_val = data.y.cpu().numpy().reshape(-1)
             true_sgn = true_val >= 0
 
