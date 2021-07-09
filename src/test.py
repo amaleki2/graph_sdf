@@ -10,6 +10,8 @@ def test_and_visualize(model,
                        save_3d_surface=True,
                        save_2d_contours=True,
                        save_folder_name="save"):
+    if isinstance(data_dl, list):
+        data_dl = data_dl[0]
 
     if save_losses:
         plot_losses(save_folder_name)

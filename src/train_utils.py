@@ -1,6 +1,7 @@
 import os
 import sys
 import torch
+import copy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -53,7 +54,7 @@ def get_loss_func_aggr(loss_func_aggr):
     return loss_func
 
 
-def sdf_loss(model, data, tmp, loss_func_aggr='l1', mask=None, coef=1.0):
+def sdf_loss(model, data, tmp, epoch, loss_func_aggr='l1', mask=None, coef=1.0):
     pred = model(data)
     loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
     if mask is None:
@@ -65,35 +66,75 @@ def sdf_loss(model, data, tmp, loss_func_aggr='l1', mask=None, coef=1.0):
     return loss
 
 
-def get_numerical_diff(pred, model, data, dir, mask, eps):
-    data_copy = data.clone()
-    data_copy.x[mask, dir] += eps
-    data_copy.e = compute_edge_features(data_copy.x, data_copy.edge_index)
+def get_numerical_diff(pred, model, data, dir, mask, data_parallel, eps):
+    if data_parallel:
+        data_copy = []
+        for d, m in zip(data, mask):
+            d_copy = d.clone()
+            d_copy.x[m, dir] += eps
+            d_copy.e = compute_edge_features(d_copy.x, d_copy.edge_index)
+            data_copy.append(d_copy)
+        mask = torch.cat(mask)
+    else:
+        data_copy = data.clone()
+        data_copy.x[mask, dir] += eps
+        data_copy.e = compute_edge_features(data_copy.x, data_copy.edge_index)
+
     dpred = model(data_copy)
     diff = (dpred.x[mask] - pred.x[mask]) / eps
+
     return diff
 
 
-def normal_loss(model, data, data_normal, loss_func_aggr='l1', loss_func_aggr_norm='l1', coefs=None, eps=1e-4):
+def normal_loss(model, data, data_normal, epoch, loss_func_aggr='l1', loss_func_aggr_norm='l1', coefs=None, eps=1e-4,
+                every_epoch=None, min_epoch=None, coefs_factor=None):
+    if every_epoch is not None and epoch % every_epoch != 0:
+        return 0.
+
+    if min_epoch is not None and epoch < min_epoch:
+        return 0.
+
     if coefs is None:
         coefs = [1., 1.]
 
-    mask = data_normal.x[:, -1] == 0
-    data_normal.x[:, -1] = 1
-    pred = model(data_normal)
-    dpred_dx = get_numerical_diff(pred, model, data_normal, 0, mask, eps)
-    dpred_dy = get_numerical_diff(pred, model, data_normal, 1, mask, eps)
-    dpred_dz = get_numerical_diff(pred, model, data_normal, 2, mask, eps)
+    if coefs_factor is not None:
+        coefs = [min(coefs[0], coefs_factor[0] * epoch), min(coefs[1], coefs_factor[1] * epoch)]
+
+
+
+    data_parallel = isinstance(data_normal, list)
+
+    if data_parallel:# distributed data
+        data_normal_copy = copy.deepcopy(data_normal)
+        mask = []
+        for d in data_normal_copy:
+            mask.append(d.x[:, -1] == 0)
+            d.x[:, -1] = 1
+        pred = model(data_normal_copy)
+        dpred_dx = get_numerical_diff(pred, model, data_normal_copy, 0, mask, data_parallel, eps)
+        dpred_dy = get_numerical_diff(pred, model, data_normal_copy, 1, mask, data_parallel, eps)
+        dpred_dz = get_numerical_diff(pred, model, data_normal_copy, 2, mask, data_parallel, eps)
+    else:
+        mask = data_normal.x[:, -1] == 0
+        data_normal.x[:, -1] = 1
+        pred = model(data_normal)
+        dpred_dx = get_numerical_diff(pred, model, data_normal, 0, mask, data_parallel, eps)
+        dpred_dy = get_numerical_diff(pred, model, data_normal, 1, mask, data_parallel, eps)
+        dpred_dz = get_numerical_diff(pred, model, data_normal, 2, mask, data_parallel, eps)
     dpred = torch.cat((dpred_dx, dpred_dy, dpred_dz), dim=1)
     loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
     loss_func_aggr_norm = get_loss_func_aggr(loss_func_aggr_norm)
     loss1 = loss_func_aggr(pred.x, torch.zeros_like(pred.x))
-    loss2 = loss_func_aggr_norm(dpred, data_normal.y)
+    if data_parallel:
+        ys = torch.cat([d.y for d in data_normal]).to(device=dpred.device)
+        loss2 = loss_func_aggr_norm(dpred, ys)
+    else:
+        loss2 = loss_func_aggr_norm(dpred, data_normal.y)
     loss = coefs[0] * loss1 + coefs[1] * loss2
     return loss
 
 
-def get_loss_funcs(loss_funcs, data_parallel):
+def get_loss_funcs(loss_funcs):
     LOSS_FUNC_NAME_DICT = {'sdf_loss': sdf_loss,
                            'normal_loss': normal_loss}
 

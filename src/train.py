@@ -29,7 +29,7 @@ def train_sdf(model,
     device, data_parallel = get_device(device)
     optimizer = get_optimizer(model, optimizer, lr_0)
     scheduler = get_scheduler(optimizer, **lr_scheduler_params)
-    composite_loss_func = get_loss_funcs(loss_funcs, data_parallel)
+    composite_loss_func = get_loss_funcs(loss_funcs)
     clip_gradients_func = get_clip_gradients_func(clip_gradients)
     tf_writer = get_summary_writer(save_folder_name)
 
@@ -61,7 +61,7 @@ def train_sdf(model,
             if not data_parallel:
                 data = data.to(device)
                 data_normal = data_normal.to(device)
-            losses = composite_loss_func(model, data, data_normal)
+            losses = composite_loss_func(model, data, data_normal, epoch)
             loss = sum(losses.values())
             train_epoch_losses.append(losses)
             loss.backward()
@@ -82,7 +82,7 @@ def train_sdf(model,
                     if not data_parallel:
                         data = data.to(device)
                         data_normal = data_normal.to(device)
-                    test_losses = composite_loss_func(model, data, data_normal)
+                    test_losses = composite_loss_func(model, data, data_normal, epoch)
                     test_epoch_losses.append(test_losses)
 
             write_to_tensorboard(epoch, test_epoch_losses, tf_writer, 'test')
