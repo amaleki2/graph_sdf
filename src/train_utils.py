@@ -87,18 +87,19 @@ def get_numerical_diff(pred, model, data, dir, mask, data_parallel, eps):
 
 
 def normal_loss(model, data, data_normal, epoch, loss_func_aggr='l1', loss_func_aggr_norm='l1', coefs=None, eps=1e-4,
-                every_epoch=None, min_epoch=None, coefs_factor=None):
-    if every_epoch is not None and epoch % every_epoch != 0:
+                every_epoch=1, min_epoch=0, coefs_factor=None):
+    if epoch % every_epoch != 0:
         return 0.
 
-    if min_epoch is not None and epoch < min_epoch:
+    if epoch < min_epoch:
         return 0.
 
     if coefs is None:
         coefs = [1., 1.]
 
     if coefs_factor is not None:
-        coefs = [min(coefs[0], coefs_factor[0] * epoch), min(coefs[1], coefs_factor[1] * epoch)]
+        de = epoch - min_epoch
+        coefs = [min(coefs[0], coefs_factor[0] * de), min(coefs[1], coefs_factor[1] * de)]
 
 
 
