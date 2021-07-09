@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from torch.utils.tensorboard import SummaryWriter
+from src.data_utils import compute_edge_features
 
 
 def find_best_gpu():
@@ -52,38 +53,58 @@ def get_loss_func_aggr(loss_func_aggr):
     return loss_func
 
 
-def sdf_loss(data, data_parallel=False, loss_func_aggr='l1', mask=None, coef=1.0):
+def sdf_loss(model, data, tmp, loss_func_aggr='l1', mask=None, coef=1.0):
+    pred = model(data)
     loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
     if mask is None:
-        loss = loss_func_aggr(data.x, data.y)
+        loss = loss_func_aggr(pred.x, pred.y)
     else:
-        loss = loss_func_aggr(data.x[mask], data.y[mask])
+        loss = loss_func_aggr(pred.x[mask], pred.y[mask])
 
     loss *= coef
     return loss
 
 
-def sdf_loss_banded(data, data_parallel=False, loss_func_aggr='l1', lower_bound=-0.1, upper_bound=0.1, coef=1.0):
-    mid_points = (lower_bound + upper_bound) / 2.0
-    radius = (upper_bound - lower_bound) / 2.0
-    mask = abs(data.y - mid_points) < radius
-    loss = sdf_loss(data, loss_func_aggr=loss_func_aggr, data_parallel=data_parallel, mask=mask)
-    loss *= coef
+def get_numerical_diff(pred, model, data, dir, mask, eps):
+    data_copy = data.clone()
+    data_copy.x[mask, dir] += eps
+    data_copy.e = compute_edge_features(data_copy.x, data_copy.edge_index)
+    dpred = model(data_copy)
+    diff = (dpred.x[mask] - pred.x[mask]) / eps
+    return diff
+
+
+def normal_loss(model, data, data_normal, loss_func_aggr='l1', loss_func_aggr_norm='l1', coefs=None, eps=1e-4):
+    if coefs is None:
+        coefs = [1., 1.]
+
+    mask = data_normal.x[:, -1] == 0
+    data_normal.x[:, -1] = 1
+    pred = model(data_normal)
+    dpred_dx = get_numerical_diff(pred, model, data_normal, 0, mask, eps)
+    dpred_dy = get_numerical_diff(pred, model, data_normal, 1, mask, eps)
+    dpred_dz = get_numerical_diff(pred, model, data_normal, 2, mask, eps)
+    dpred = torch.cat((dpred_dx, dpred_dy, dpred_dz), dim=1)
+    loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
+    loss_func_aggr_norm = get_loss_func_aggr(loss_func_aggr_norm)
+    loss1 = loss_func_aggr(pred.x, torch.zeros_like(pred.x))
+    loss2 = loss_func_aggr_norm(dpred, data_normal.y)
+    loss = coefs[0] * loss1 + coefs[1] * loss2
     return loss
 
 
 def get_loss_funcs(loss_funcs, data_parallel):
     LOSS_FUNC_NAME_DICT = {'sdf_loss': sdf_loss,
-                           'sdf_banded_loss': sdf_loss_banded}
+                           'normal_loss': normal_loss}
 
     if loss_funcs is None:
         loss_funcs = {'sdf_loss': {}}
 
-    def compiled_loss_func(data, *args):
+    def compiled_loss_func(model, data, *args):
         losses = {}
         for loss_func, loss_funcs_params in loss_funcs.items():
             f = LOSS_FUNC_NAME_DICT[loss_func]
-            losses[loss_func] = f(data, *args, data_parallel=data_parallel, **loss_funcs_params)
+            losses[loss_func] = f(model, data, *args, **loss_funcs_params)
 
         return losses
 

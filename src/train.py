@@ -19,6 +19,10 @@ def train_sdf(model,
               lr_0=0.001,
               lr_scheduler_params=None):
 
+    if isinstance(train_dl, list):
+        train_dl, train_normals_dl = train_dl
+        test_dl, test_normals_dl = test_dl
+
     if lr_scheduler_params is None:
         lr_scheduler_params = {}
 
@@ -51,13 +55,12 @@ def train_sdf(model,
 
     for epoch in range(n_epochs + 1):
         train_epoch_losses = []
-        for data in train_dl:
+        for data, data_normal in zip(train_dl, train_normals_dl):
             model.train()
             optimizer.zero_grad()
             if not data_parallel:
                 data = data.to(device)
-            pred = model(data)
-            losses = composite_loss_func(pred)
+            losses = composite_loss_func(model, data, data_normal)
             loss = sum(losses.values())
             train_epoch_losses.append(losses)
             loss.backward()
@@ -73,13 +76,11 @@ def train_sdf(model,
         test_epoch_losses = []
         if epoch % print_every == 0 and len(test_dl) > 0:
             with torch.no_grad():
-                for data in test_dl:
+                for data, data_normal in zip(test_dl, test_normals_dl):
                     model.eval()
                     if not data_parallel:
                         data = data.to(device)
-                    pred = model(data)
-
-                    test_losses = composite_loss_func(pred)
+                    test_losses = composite_loss_func(model, data, data_normal)
                     test_epoch_losses.append(test_losses)
 
             write_to_tensorboard(epoch, test_epoch_losses, tf_writer, 'test')

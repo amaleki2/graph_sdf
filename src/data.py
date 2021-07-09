@@ -55,6 +55,19 @@ class SDF3dData:
         return x, y
 
     @staticmethod
+    def _get_sampling_points_node_attr(mesh):
+        volume_points, face_id = trimesh.sample.sample_surface(mesh, len(mesh.faces) * 5)
+        volume_points_normals = mesh.face_normals[face_id]
+        surface_points = mesh.vertices
+        all_points = np.concatenate((surface_points, volume_points))
+        additional_feature = np.concatenate((np.ones(len(surface_points)),
+                                             np.zeros(len(volume_points)))).reshape(-1, 1)
+        x = np.concatenate((all_points, additional_feature), axis=1)
+        x = x.astype(float)
+        y = volume_points_normals.astype(float)
+        return x, y
+
+    @staticmethod
     def _get_edge_attr(mesh,
                        node_attr,
                        edge_method='mesh_edge',
@@ -155,11 +168,15 @@ class SDF3dData:
                                                               for f in tqdm.tqdm(test_files))
 
         if data_parallel:
-            train_data = DataListLoader(train_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
-            test_data = DataListLoader(test_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
+            train_data = [DataListLoader([x[0] for x in train_graph_data_list], batch_size=batch_size, shuffle=False),
+                          DataListLoader([x[1] for x in train_graph_data_list], batch_size=batch_size, shuffle=False)]
+            test_data = [DataListLoader([x[0] for x in test_graph_data_list], batch_size=batch_size, shuffle=False),
+                         DataListLoader([x[1] for x in test_graph_data_list], batch_size=batch_size, shuffle=False)]
         else:
-            train_data = DataLoader(train_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
-            test_data = DataLoader(test_graph_data_list, batch_size=batch_size, shuffle=shuffle_dataloader)
+            train_data = [DataLoader([x[0] for x in train_graph_data_list], batch_size=batch_size, shuffle=False),
+                          DataLoader([x[1] for x in train_graph_data_list], batch_size=batch_size, shuffle=False)]
+            test_data = [DataLoader([x[0] for x in test_graph_data_list], batch_size=batch_size, shuffle=False),
+                         DataLoader([x[1] for x in test_graph_data_list], batch_size=batch_size, shuffle=False)]
         return train_data, test_data
 
     def mesh_to_graph(self, mesh_file):
@@ -175,19 +192,41 @@ class SDF3dData:
         node_attr, node_sdf = self._get_node_attr(mesh, **self.node_params)
         edge_attr, edge_idx = self._get_edge_attr(mesh, node_attr, **self.edge_params)
 
-        if self.global_params is None:
-            pyg_data = Data(x=torch.from_numpy(node_attr).type(torch.float32),
-                            y=torch.from_numpy(node_sdf).type(torch.float32),
-                            e=torch.from_numpy(edge_attr).type(torch.float32),
-                            edge_index=torch.from_numpy(edge_idx).type(torch.long))
-        else:
+        pyg_data = Data(x=torch.from_numpy(node_attr).type(torch.float32),
+                        y=torch.from_numpy(node_sdf).type(torch.float32),
+                        e=torch.from_numpy(edge_attr).type(torch.float32),
+                        edge_index=torch.from_numpy(edge_idx).type(torch.long))
+
+        sampling_points_node_attr, sampling_points_normals = self._get_sampling_points_node_attr(mesh)
+        sampling_points_edge_attr, sampling_points_edge_idx = self._get_edge_attr(mesh, sampling_points_node_attr, **self.edge_params)
+        pyg_data_norml = Data(x=torch.from_numpy(sampling_points_node_attr).type(torch.float32),
+                              e=torch.from_numpy(sampling_points_edge_attr).type(torch.float32),
+                              y=torch.from_numpy(sampling_points_normals).type(torch.float32),
+                              edge_index=torch.from_numpy(sampling_points_edge_idx).type(torch.long))
+
+        if self.global_params is not None:
             global_attr = self._get_global_attr(mesh, **self.global_params)
-            pyg_data = Data(x=torch.from_numpy(node_attr).type(torch.float32),
-                            y=torch.from_numpy(node_sdf).type(torch.float32),
-                            e=torch.from_numpy(edge_attr).type(torch.float32),
-                            u=torch.from_numpy(global_attr).type(torch.float32),
-                            edge_index=torch.from_numpy(edge_idx).type(torch.long))
-        return pyg_data
+            pyg_data.u = torch.from_numpy(global_attr).type(torch.float32)
+            pyg_data_norml.u = torch.from_numpy(global_attr).type(torch.float32)
+
+        return pyg_data, pyg_data_norml
+
+    def mesh_to_graph_normals(self, mesh_file):
+        sampling_points_node_attr, sampling_points_normals = self._get_sampling_points_node_attr(mesh_file)
+        sampling_points_edge_attr, sampling_points_edge_idx = self._get_edge_attr(mesh_file,
+                                                                                  sampling_points_node_attr,
+                                                                                  **self.edge_params)
+        pyg_data_norml = Data(x=torch.from_numpy(sampling_points_node_attr).type(torch.float32),
+                              e=torch.from_numpy(sampling_points_edge_attr).type(torch.float32),
+                              y=torch.from_numpy(sampling_points_normals).type(torch.float32),
+                              edge_index=torch.from_numpy(sampling_points_edge_idx).type(torch.long))
+
+        if self.global_params is not None:
+            global_attr = self._get_global_attr(mesh_file, **self.global_params)
+            pyg_data_norml.u = torch.from_numpy(global_attr).type(torch.float32)
+
+        return pyg_data_norml
+
 
     def mesh_to_dataloader(self):
         return self._mesh_to_dataloader(**self.dataloader_params)
