@@ -60,6 +60,7 @@ def train_sdf(model,
             optimizer.zero_grad()
             if not data_parallel:
                 data = data.to(device)
+                data_normal = data_normal.to(device)
             losses = composite_loss_func(model, data, data_normal)
             loss = sum(losses.values())
             train_epoch_losses.append(losses)
@@ -80,6 +81,7 @@ def train_sdf(model,
                     model.eval()
                     if not data_parallel:
                         data = data.to(device)
+                        data_normal = data_normal.to(device)
                     test_losses = composite_loss_func(model, data, data_normal)
                     test_epoch_losses.append(test_losses)
 
