@@ -57,7 +57,7 @@ def train_sdf(model,
             if not data_parallel:
                 data = data.to(device)
             pred = model(data)
-            losses = composite_loss_func(pred, model, data)
+            losses = composite_loss_func(pred, model, data, epoch)
             loss = sum(losses.values())
             train_epoch_losses.append(losses)
             loss.backward()
@@ -79,7 +79,7 @@ def train_sdf(model,
                         data = data.to(device)
                     pred = model(data)
 
-                    test_losses = composite_loss_func(pred, model, data)
+                    test_losses = composite_loss_func(pred, model, data, epoch)
                     test_epoch_losses.append(test_losses)
 
             write_to_tensorboard(epoch, test_epoch_losses, tf_writer, 'test')

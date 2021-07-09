@@ -53,26 +53,47 @@ def get_loss_func_aggr(loss_func_aggr):
     return loss_func
 
 
-def get_numerical_diff(pred, model, data, dir, eps=1e-4):
-    data_copy = data.clone()
-    volume_points_indicator = data.x[:, -1] == 0
-    data_copy.x[volume_points_indicator, dir] += eps
-    data_copy.e = compute_edge_features(data_copy.x, data_copy.edge_index)
+def get_numerical_diff(pred, model, data, dir, mask, data_parallel, eps):
+    if data_parallel:
+        data_copy = []
+        for d, m in zip(data, mask):
+            d_copy = d.clone()
+            d_copy.x[m, dir] += eps
+            d_copy.e = compute_edge_features(d_copy.x, d_copy.edge_index)
+            data_copy.append(d_copy)
+    else:
+        data_copy = data.clone()
+        data_copy.x[mask, dir] += eps
+        data_copy.e = compute_edge_features(data_copy.x, data_copy.edge_index)
+
     dpred = model(data_copy)
-    diff = (dpred.x[volume_points_indicator] - pred.x[volume_points_indicator]) / eps
+    diff = (dpred.x - pred.x) / eps
+
     return diff
 
 
-def eikonal_loss(pred, model, data, eps=1e-4, loss_func_aggr='l2', data_parallel=False, coef=1.0):
-    if data_parallel:
-        raise NotImplemented
+def eikonal_loss(pred, model, data, epoch, eps=1e-4, loss_func_aggr='l2', data_parallel=False,
+                 coef=1.0, min_epoch=0, coef_factor=None):
+    if epoch < min_epoch:
+        return 0.
+
+    if coef_factor is not None:
+        de = epoch - min_epoch
+        coef = min(coef, coef_factor * de)
 
     loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
-    dx = get_numerical_diff(pred, model, data, 0, eps=eps)
-    dy = get_numerical_diff(pred, model, data, 1, eps=eps)
-    dz = get_numerical_diff(pred, model, data, 2, eps=eps)
-    residuals = dx ** 2 + dy ** 2 + dz ** 2
-    loss = loss_func_aggr(residuals, torch.ones_like(residuals))
+    if data_parallel:  # distributed data
+        mask = [d.x[:, -1] == 0 for d in data]
+        dpred_dx = get_numerical_diff(pred, model, data, 0, mask, data_parallel, eps)
+        dpred_dy = get_numerical_diff(pred, model, data, 1, mask, data_parallel, eps)
+        dpred_dz = get_numerical_diff(pred, model, data, 2, mask, data_parallel, eps)
+    else:
+        mask = data.x[:, -1] == 0
+        dpred_dx = get_numerical_diff(pred, model, data, 0, mask, data_parallel, eps)
+        dpred_dy = get_numerical_diff(pred, model, data, 1, mask, data_parallel, eps)
+        dpred_dz = get_numerical_diff(pred, model, data, 2, mask, data_parallel, eps)
+    gradients = dpred_dx ** 2 + dpred_dy ** 2 + dpred_dz ** 2
+    loss = loss_func_aggr(gradients, torch.ones_like(gradients))
     loss *= coef
     return loss
 
