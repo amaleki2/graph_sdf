@@ -142,13 +142,16 @@ def plot_2d_contours(points, true_vals, pred_vals, levels=None, save_name=None, 
 
 
 def sdf_grid_to_surface_mesh(grid_sdf, save_name=None, level=1):
-    verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
-    mesh = trimesh.Trimesh(verts, faces)
-    if save_name is None:
-        mesh.show()
-    else:
-        with open(save_name, 'wb') as fid:
-            mesh.export(fid, file_type='obj')
+    try:
+        verts, faces, normals, values = marching_cubes(grid_sdf, level=level)
+        mesh = trimesh.Trimesh(verts, faces)
+        if save_name is None:
+            mesh.show()
+        else:
+            with open(save_name, 'wb') as fid:
+                mesh.export(fid, file_type='obj')
+    except ValueError:
+        print("surface level does not cross 0 ")
 
 
 def plot_surface_mesh(true_sdfs, pred_sdfs, save_names=None, level=1):
