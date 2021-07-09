@@ -1,4 +1,5 @@
-from torch_geometric.nn import DataParallel
+from .data_parallel import CustomDataParallel as DataParallel
+from torch_geometric.data import Batch
 from .train_utils import *
 
 
@@ -34,7 +35,15 @@ def train_sdf(model,
         model.load_state_dict(model_weights)
 
     if data_parallel:
-        device0 = torch.device('cuda:%d'%device[0])
+        device0 = torch.device('cuda:%d' % device[0])
+
+        # lazy modules need to be initialzed for data loader.
+        # using a dummy data
+        dummy_data = next(iter(train_dl))
+        dummy_data = Batch().from_data_list(dummy_data[:1]).to(device=device0)
+        model = model.to(device0)
+        model(dummy_data)
+
         model = DataParallel(model, device_ids=device)
         model = model.to(device0)
     else:

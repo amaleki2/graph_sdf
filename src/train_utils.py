@@ -88,13 +88,10 @@ def eikonal_loss_autodiff(pred, data):
 
 def sdf_loss(data, *args, data_parallel=False, loss_func_aggr='l1', mask=None, coef=1.0):
     loss_func_aggr = get_loss_func_aggr(loss_func_aggr)
-    if not data_parallel:
-        if mask is None:
-            loss = loss_func_aggr(data.x, data.y)
-        else:
-            loss = loss_func_aggr(data.x[mask], data.y[mask])
+    if mask is None:
+        loss = loss_func_aggr(data.x, data.y)
     else:
-        raise NotImplemented
+        loss = loss_func_aggr(data.x[mask], data.y[mask])
 
     loss *= coef
     return loss
