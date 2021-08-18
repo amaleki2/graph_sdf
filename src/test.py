@@ -39,7 +39,7 @@ def test_and_visualize(model,
                                  os.path.join(os.getcwd(), save_folder_name, 'pred_surface_mesh%d.obj' % i)]
                 plot_surface_mesh(true_val, pred_val, save_names=save_name_msh, level=0)
 
-            predictions.append([points, true_val, pred_val])
+            predictions.append([true_val, pred_val])
 
         if save_predictions:
             save_name_preds = os.path.join(os.getcwd(), save_folder_name, 'preds.npy')
