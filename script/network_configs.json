@@ -1,0 +1,65 @@
+{
+    "encode_process_decode": {
+        "encoder_params": {
+            "edge_model_params": {
+                "n_feat_in": 4,
+                "n_feat_out": 32,
+                "latent_sizes": [16, 32],
+                "activate_final": true,
+                "normalize": true,
+                "independent": true
+            },
+            "node_model_params": {
+                "n_feat_in": 4,
+                "n_feat_out": 32,
+                "latent_sizes": [16, 32],
+                "activate_final": true,
+                "normalize": true,
+                "independent": true
+            }
+        },
+        "num_processing_steps": 5,
+        "processor_params": {
+            "edge_model_params": {
+                "n_feat_in": 192,
+                "n_feat_out": 32,
+                "latent_sizes": [128, 64],
+                "activate_final": true,
+                "with_globals": false,
+                "with_senders": false,
+                "normalize": true,
+                "independent": false
+            },
+            "node_model_params": {
+                "n_feat_in": 128,
+                "n_feat_out": 32,
+                "latent_sizes": [64, 64],
+                "activate_final": true,
+                "with_globals": false,
+                "with_senders": false,
+                "normalize": true,
+                "independent": false
+            }
+        },
+        "decoder_params": {
+            "node_model_params": {
+                "n_feat_in": 32,
+                "n_feat_out": 32,
+                "latent_sizes": [32, 32],
+                "activate_final": true,
+                "normalize": true,
+                "independent": true
+            }
+        },
+        "outputer_params": {
+            "node_model_params": {
+                "n_feat_in": 32,
+                "n_feat_out": 1, 
+                "latent_sizes": [32, 16],
+                "activate_final": false,
+                "normalize": false,
+                "independent": true
+            }
+        }
+    }
+}

@@ -1,0 +1,92 @@
+{
+    "train_data": {
+        "node_params": {
+            "n_volume_points": null,
+            "on_surface_only": true,
+            "scaler": 2
+        },
+        "edge_params": {
+            "edge_method": "both",
+            "radius": 0.4,
+            "min_n_edges": 5,
+            "max_n_edges": 40,
+            "n_features_to_consider": 3,
+            "include_reverse_edges": true,
+            "include_self_edges": true,
+            "with_volume_edges": false
+        },
+        "global_params": {
+            "centroid": false,
+            "volume": true,
+            "area": true
+        },
+        "transform_params": {
+            "rotate": {},
+            "preprocess": {
+                "mesh_out": null,
+                "with_scaling_to_unit_box": true,
+                "merge_vertex": true,
+                "scaler": 1.75
+            }
+        },
+        "dataloader_params": {
+            "data_folder": "D:/data/spcm/space_claim_round4/rect/all_objs",
+            "n_objects": null,
+            "randomize_objects": true,
+            "n_workers": 16,
+            "data_parallel": true,
+            "batch_size": 40,
+            "shuffle_dataloader": true,
+            "eval_frac": 0.1,
+            "data_filter": null
+        }
+    },
+    "test_data": {
+        "node_params": {
+            "n_volume_points": null,
+            "on_surface_only": true,
+            "scaler": 2,
+            "grid_resolution": 32
+        },
+        "edge_params": {
+            "edge_method": "both",
+            "radius": 0.4,
+            "min_n_edges": 5,
+            "max_n_edges": 40,
+            "n_features_to_consider": 3,
+            "include_reverse_edges": true,
+            "include_self_edges": true,
+            "with_volume_edges": false
+        },
+        "global_params": {
+            "centroid": false,
+            "volume": true,
+            "area": true
+        },
+        "transform_params": {
+            "rotate": {
+                "matrix": [[-0.57, -0.24, -0.78, 0.0], 
+                           [ 0.72, -0.60, -0.34, 0.0], 
+                           [-0.39, -0.76,  0.51, 0.0],
+                           [0.0,     0.0,   0.0, 0.0]]
+            },
+            "preprocess": {
+                "mesh_out": null,
+                "with_scaling_to_unit_box": true,
+                "merge_vertex": true,
+                "scaler": 1.75
+            }
+        },
+        "dataloader_params": {
+            "data_folder": "/home/ansysai/amaleki/datasets/space_claim_round4/rect/all_objs",
+            "n_objects": 10,
+            "randomize_objects": false,
+            "n_workers": 2,
+            "data_parallel": false,
+            "batch_size": 1,
+            "shuffle_dataloader": false,
+            "eval_frac": 0.0,
+            "data_filter": null
+        }
+    }
+}

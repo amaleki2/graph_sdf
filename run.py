@@ -21,7 +21,7 @@ try:
     sys.path.append(parent_folder)
     from graph_networks.src import EncodeProcessDecode
 except ImportError:
-    raise ImportError("could not find graph_network path, "
+    raise ImportError("could not find graph_network folder, "
                       "use --extra-path argument to pass the path for this library")
 
 

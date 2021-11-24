@@ -1,0 +1,29 @@
+{
+    "train": {
+        "loss_funcs": {
+            "sdf_loss": {
+                "loss_func_aggr": "l1"
+            }
+        },
+        "n_epochs": 2000,
+        "plot_gradients": true,
+        "print_every": 5,
+        "save_every": 5,
+        "save_folder_name": "save",
+        "device": "0 1 2 3",
+        "optimizer": "adam",
+        "lr_0": 0.001,
+        "lr_scheduler_params": {
+            "scheduler_type": "StepLR",
+            "step_size": 500,
+            "gamma": 0.2
+        }
+    },
+    "test": {
+        "device": "cuda",
+        "save_losses": true,
+        "save_3d_surface": true,
+        "save_2d_contours": true,
+        "save_folder_name": "save"
+    }
+}
