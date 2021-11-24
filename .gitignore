@@ -3,3 +3,5 @@ src/render/__pycache__
 src/render/build
 src/render/dist
 *egg-info
+
+.idea
